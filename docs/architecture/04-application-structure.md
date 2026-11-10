@@ -69,19 +69,19 @@ A `BelongsToFamily` trait adds a global scope that limits queries to the family 
 
 ### Key libraries
 
-| Need | Library | Notes |
-|---|---|---|
-| Auth, MFA, password reset, email verification | **Laravel Fortify** (via the official React starter kit) | First-party. TOTP MFA + recovery codes. |
-| Social login | **Laravel Socialite** | Google now; Apple when the developer account exists. |
-| API tokens (future native apps) | **Laravel Sanctum** | First-party. |
-| Queues dashboard | **Laravel Horizon** | First-party. |
-| Monitoring | **Laravel Pulse** | First-party; self-hosted, no data leaves the server. |
-| Web push | `laravel-notification-channels/webpush` | VAPID; maintained community package. |
-| Images | `intervention/image` (Imagick driver) | Resize, strip metadata, HEIC → JPEG. |
-| PDF | `spatie/laravel-pdf` + Browsershot (Chromium) | Renders the actual D3 SVG tree. Alternative if Chromium is rejected: dompdf (text reports only; tree as static image). |
-| Rich text sanitising | `mews/purifier` (HTML Purifier) | Biographies are user HTML. |
-| Static analysis / style | Larastan, Pint, Rector | Dev only. |
-| Tests | Pest | Dev only. |
+| Need                                          | Library                                                  | Notes                                                                                                                  |
+| --------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Auth, MFA, password reset, email verification | **Laravel Fortify** (via the official React starter kit) | First-party. TOTP MFA + recovery codes.                                                                                |
+| Social login                                  | **Laravel Socialite**                                    | Google now; Apple when the developer account exists.                                                                   |
+| API tokens (future native apps)               | **Laravel Sanctum**                                      | First-party.                                                                                                           |
+| Queues dashboard                              | **Laravel Horizon**                                      | First-party.                                                                                                           |
+| Monitoring                                    | **Laravel Pulse**                                        | First-party; self-hosted, no data leaves the server.                                                                   |
+| Web push                                      | `laravel-notification-channels/webpush`                  | VAPID; maintained community package.                                                                                   |
+| Images                                        | `intervention/image` (Imagick driver)                    | Resize, strip metadata, HEIC → JPEG.                                                                                   |
+| PDF                                           | `spatie/laravel-pdf` + Browsershot (Chromium)            | Renders the actual D3 SVG tree. Alternative if Chromium is rejected: dompdf (text reports only; tree as static image). |
+| Rich text sanitising                          | `mews/purifier` (HTML Purifier)                          | Biographies are user HTML.                                                                                             |
+| Static analysis / style                       | Larastan, Pint, Rector                                   | Dev only.                                                                                                              |
+| Tests                                         | Pest                                                     | Dev only.                                                                                                              |
 
 Deliberately **not** used: a generic RBAC package (Spatie Permission). Family-scoped roles with a fixed matrix are simpler as our own three tables plus Policies, with one less dependency. GEDCOM: no well-maintained PHP library supports GEDCOM 7, so we write a focused parser/exporter with conformance tests against the official FamilySearch sample files.
 

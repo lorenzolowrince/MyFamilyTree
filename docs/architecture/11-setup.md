@@ -4,12 +4,12 @@ This is the plan for Phase 2. These commands are run **after** the architecture 
 
 ## Prerequisites on your Windows PC
 
-| Tool | Why | Notes |
-|---|---|---|
-| **Docker Desktop** (with WSL 2) | Runs PostgreSQL, Redis, Mailpit, MinIO and ClamAV exactly like production | Recommended route. |
-| Git | Version control | Already installed. |
-| VS Code + extensions: PHP Intelephense, Laravel, ESLint, Tailwind CSS IntelliSense | Editing | |
-| (Alternative to Docker) PHP 8.4+, Composer, Node 24 LTS, PostgreSQL 18, Memurai (Redis for Windows) | Native setup | Works, but drifts from production more easily. |
+| Tool                                                                                                | Why                                                                       | Notes                                          |
+| --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------- |
+| **Docker Desktop** (with WSL 2)                                                                     | Runs PostgreSQL, Redis, Mailpit, MinIO and ClamAV exactly like production | Recommended route.                             |
+| Git                                                                                                 | Version control                                                           | Already installed.                             |
+| VS Code + extensions: PHP Intelephense, Laravel, ESLint, Tailwind CSS IntelliSense                  | Editing                                                                   |                                                |
+| (Alternative to Docker) PHP 8.4+, Composer, Node 24 LTS, PostgreSQL 18, Memurai (Redis for Windows) | Native setup                                                              | Works, but drifts from production more easily. |
 
 With Sail, PHP, Composer and Node run inside containers, so they do not need to be installed on Windows.
 

@@ -7,51 +7,51 @@
 
 ## Family roles
 
-| Role | Intended for |
-|---|---|
-| **Owner** | The person who created the tree. Exactly one per family. |
-| **Administrator** | Trusted relatives who help run the tree. |
-| **Editor** | Relatives who keep records accurate. Edits apply immediately. |
-| **Contributor** | Relatives who add information. Their changes go to the approval queue. |
-| **Viewer** | Relatives who just want to browse. |
+| Role              | Intended for                                                           |
+| ----------------- | ---------------------------------------------------------------------- |
+| **Owner**         | The person who created the tree. Exactly one per family.               |
+| **Administrator** | Trusted relatives who help run the tree.                               |
+| **Editor**        | Relatives who keep records accurate. Edits apply immediately.          |
+| **Contributor**   | Relatives who add information. Their changes go to the approval queue. |
+| **Viewer**        | Relatives who just want to browse.                                     |
 
 ## Permissions matrix
 
 ✅ allowed · 📝 allowed but submitted as a change request for approval · 👤 own records only · ❌ not allowed
 
-| Permission | Owner | Admin | Editor | Contributor | Viewer |
-|---|:-:|:-:|:-:|:-:|:-:|
-| **Tree** | | | | | |
-| View tree, deceased members' profiles | ✅ | ✅ | ✅ | ✅ | ✅ |
-| View living members' basic info (name, photo, relationships) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| View living members' sensitive info (exact birth date, place, contact notes) | ✅ | ✅ | ✅ | ❌ | ❌ |
-| View `restricted` records | ✅ | ✅ | ✅ | ❌ | ❌ |
-| View `private` records | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Add members / relationships | ✅ | ✅ | ✅ | 📝 | ❌ |
-| Edit members / relationships | ✅ | ✅ | ✅ | 📝 (own linked profile: ✅) | 👤 own linked profile: 📝 |
-| Delete / merge members | ✅ | ✅ | ❌ (📝) | ❌ | ❌ |
-| Add timeline entries | ✅ | ✅ | ✅ | 📝 | ❌ |
-| **Media** | | | | | |
-| View photos / documents | ✅ | ✅ | ✅ | ✅ | ✅ (per file visibility) |
-| Upload photos / documents | ✅ | ✅ | ✅ | ✅ (goes live after scan; admins can switch to approval) | ❌ |
-| Edit captions, tags, albums | ✅ | ✅ | ✅ | 👤 | ❌ |
-| Download documents | ✅ | ✅ | ✅ | ✅ (if `downloadable`) | ✅ (if `downloadable`) |
-| Delete any media | ✅ | ✅ | ❌ | 👤 | ❌ |
-| **Collaboration** | | | | | |
-| Review / approve change requests | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Invite people | ✅ | ✅ (up to Editor) | ❌ | ❌ | ❌ |
-| Change members' roles | ✅ | ✅ (below Admin) | ❌ | ❌ | ❌ |
-| Remove people from the family | ✅ | ✅ (below Admin) | ❌ | ❌ | ❌ |
-| **Reports and data** | | | | | |
-| Generate PDF reports | ✅ | ✅ | ✅ | ✅ (without restricted data) | ❌ |
-| GEDCOM export | ✅ | ✅ | ❌ | ❌ | ❌ |
-| GEDCOM import | ✅ | ✅ | ❌ | ❌ | ❌ |
-| View audit history of the family | ✅ | ✅ | ✅ (records only) | ❌ | ❌ |
-| **Family settings** | | | | | |
-| Edit name, cover, privacy defaults, approval policy | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Grant support access to platform staff | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Transfer ownership | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Delete the family | ✅ (with re-authentication + 7-day grace period) | ❌ | ❌ | ❌ | ❌ |
+| Permission                                                                   |                      Owner                       |       Admin       |      Editor       |                       Contributor                        |          Viewer           |
+| ---------------------------------------------------------------------------- | :----------------------------------------------: | :---------------: | :---------------: | :------------------------------------------------------: | :-----------------------: |
+| **Tree**                                                                     |                                                  |                   |                   |                                                          |                           |
+| View tree, deceased members' profiles                                        |                        ✅                        |        ✅         |        ✅         |                            ✅                            |            ✅             |
+| View living members' basic info (name, photo, relationships)                 |                        ✅                        |        ✅         |        ✅         |                            ✅                            |            ✅             |
+| View living members' sensitive info (exact birth date, place, contact notes) |                        ✅                        |        ✅         |        ✅         |                            ❌                            |            ❌             |
+| View `restricted` records                                                    |                        ✅                        |        ✅         |        ✅         |                            ❌                            |            ❌             |
+| View `private` records                                                       |                        ✅                        |        ✅         |        ❌         |                            ❌                            |            ❌             |
+| Add members / relationships                                                  |                        ✅                        |        ✅         |        ✅         |                            📝                            |            ❌             |
+| Edit members / relationships                                                 |                        ✅                        |        ✅         |        ✅         |               📝 (own linked profile: ✅)                | 👤 own linked profile: 📝 |
+| Delete / merge members                                                       |                        ✅                        |        ✅         |      ❌ (📝)      |                            ❌                            |            ❌             |
+| Add timeline entries                                                         |                        ✅                        |        ✅         |        ✅         |                            📝                            |            ❌             |
+| **Media**                                                                    |                                                  |                   |                   |                                                          |                           |
+| View photos / documents                                                      |                        ✅                        |        ✅         |        ✅         |                            ✅                            | ✅ (per file visibility)  |
+| Upload photos / documents                                                    |                        ✅                        |        ✅         |        ✅         | ✅ (goes live after scan; admins can switch to approval) |            ❌             |
+| Edit captions, tags, albums                                                  |                        ✅                        |        ✅         |        ✅         |                            👤                            |            ❌             |
+| Download documents                                                           |                        ✅                        |        ✅         |        ✅         |                  ✅ (if `downloadable`)                  |  ✅ (if `downloadable`)   |
+| Delete any media                                                             |                        ✅                        |        ✅         |        ❌         |                            👤                            |            ❌             |
+| **Collaboration**                                                            |                                                  |                   |                   |                                                          |                           |
+| Review / approve change requests                                             |                        ✅                        |        ✅         |        ✅         |                            ❌                            |            ❌             |
+| Invite people                                                                |                        ✅                        | ✅ (up to Editor) |        ❌         |                            ❌                            |            ❌             |
+| Change members' roles                                                        |                        ✅                        | ✅ (below Admin)  |        ❌         |                            ❌                            |            ❌             |
+| Remove people from the family                                                |                        ✅                        | ✅ (below Admin)  |        ❌         |                            ❌                            |            ❌             |
+| **Reports and data**                                                         |                                                  |                   |                   |                                                          |                           |
+| Generate PDF reports                                                         |                        ✅                        |        ✅         |        ✅         |               ✅ (without restricted data)               |            ❌             |
+| GEDCOM export                                                                |                        ✅                        |        ✅         |        ❌         |                            ❌                            |            ❌             |
+| GEDCOM import                                                                |                        ✅                        |        ✅         |        ❌         |                            ❌                            |            ❌             |
+| View audit history of the family                                             |                        ✅                        |        ✅         | ✅ (records only) |                            ❌                            |            ❌             |
+| **Family settings**                                                          |                                                  |                   |                   |                                                          |                           |
+| Edit name, cover, privacy defaults, approval policy                          |                        ✅                        |        ✅         |        ❌         |                            ❌                            |            ❌             |
+| Grant support access to platform staff                                       |                        ✅                        |        ❌         |        ❌         |                            ❌                            |            ❌             |
+| Transfer ownership                                                           |                        ✅                        |        ❌         |        ❌         |                            ❌                            |            ❌             |
+| Delete the family                                                            | ✅ (with re-authentication + 7-day grace period) |        ❌         |        ❌         |                            ❌                            |            ❌             |
 
 ## Rules that apply on top of the matrix
 
