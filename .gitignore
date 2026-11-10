@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.dump
+/backups
+/node_modules
+/vendor
+/public/build
+/public/hot
+/storage/*.key
+.DS_Store
+Thumbs.db
