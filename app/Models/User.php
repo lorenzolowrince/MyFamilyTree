@@ -133,6 +133,10 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             return true;
         }
 
+        if (! config('families.require_two_factor_for_admins')) {
+            return false;
+        }
+
         return $this->memberships()
             ->where('status', MembershipStatus::Active->value)
             ->whereIn('role_id', [FamilyRole::Owner->id(), FamilyRole::Admin->id()])

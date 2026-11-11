@@ -2,7 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\FamilyPermission;
+use App\Enums\MembershipStatus;
+use App\Models\Family;
 use App\Models\User;
+use App\Services\Authorization\FamilyAccess;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -42,7 +46,57 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $this->user($request->user()),
             ],
+            'currentFamily' => fn (): ?array => $this->currentFamily($request),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+        ];
+    }
+
+    /**
+     * The family the navigation points at: the one in the URL, else the one last opened,
+     * else the person's first family. Null when they belong to none. The permission list is a
+     * hint for showing or hiding buttons; the server authorises every request regardless.
+     *
+     * @return array{slug: string, name: string, role: string, permissions: list<string>}|null
+     */
+    private function currentFamily(Request $request): ?array
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User || ! $user->isActive()) {
+            return null;
+        }
+
+        $access = app(FamilyAccess::class);
+        $routeFamily = $request->route('family');
+
+        $family = $routeFamily instanceof Family && $access->isMember($user, $routeFamily) ? $routeFamily : null;
+
+        if ($family === null) {
+            $families = $user->families()
+                ->wherePivot('status', MembershipStatus::Active->value)
+                ->orderBy('families.created_at')
+                ->limit(50)
+                ->get();
+
+            $remembered = $request->hasSession() ? $request->session()->get(RememberCurrentFamily::SESSION_KEY) : null;
+
+            $family = $families->firstWhere('id', $remembered) ?? $families->first();
+        }
+
+        $role = $family === null ? null : $access->role($user, $family);
+
+        if ($family === null || $role === null) {
+            return null;
+        }
+
+        return [
+            'slug' => $family->slug,
+            'name' => $family->name,
+            'role' => $role->label(),
+            'permissions' => array_values(array_map(
+                fn (FamilyPermission $permission): string => $permission->value,
+                array_filter(FamilyPermission::cases(), fn (FamilyPermission $permission): bool => $access->roleHas($role, $permission)),
+            )),
         ];
     }
 

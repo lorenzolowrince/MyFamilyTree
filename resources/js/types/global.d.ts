@@ -1,4 +1,5 @@
 import type { Auth } from '@/types/auth';
+import type { CurrentFamily } from '@/types/family';
 
 declare module 'react' {
     interface InputHTMLAttributes<T> {
@@ -11,6 +12,7 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             auth: Auth;
+            currentFamily: CurrentFamily | null;
             sidebarOpen: boolean;
             [key: string]: unknown;
         };

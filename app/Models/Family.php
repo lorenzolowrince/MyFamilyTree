@@ -78,6 +78,51 @@ class Family extends Model
         return $this->hasMany(FamilyMembership::class);
     }
 
+    /** @return HasMany<FamilyMember, $this> */
+    public function members(): HasMany
+    {
+        return $this->hasMany(FamilyMember::class);
+    }
+
+    /** @return HasMany<FamilyRelationship, $this> */
+    public function relationships(): HasMany
+    {
+        return $this->hasMany(FamilyRelationship::class);
+    }
+
+    /** @return HasMany<Place, $this> */
+    public function places(): HasMany
+    {
+        return $this->hasMany(Place::class);
+    }
+
+    /** @return BelongsTo<FamilyMember, $this> */
+    public function rootMember(): BelongsTo
+    {
+        return $this->belongsTo(FamilyMember::class, 'root_member_id');
+    }
+
+    /** Families are addressed by slug in URLs. */
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
+    /**
+     * Mark the shape of the tree as changed. `graph_version` is the cache key for tree and
+     * relationship data, so anything cached for the previous version is never used again.
+     */
+    public static function bumpGraphVersion(string $familyId): void
+    {
+        static::query()->withTrashed()->whereKey($familyId)->toBase()->increment('graph_version');
+    }
+
+    /** The current version straight from the database (the loaded model may be stale). */
+    public function currentGraphVersion(): int
+    {
+        return (int) static::query()->withTrashed()->whereKey($this->id)->toBase()->value('graph_version');
+    }
+
     /** @return BelongsToMany<User, $this, FamilyMembership> */
     public function users(): BelongsToMany
     {

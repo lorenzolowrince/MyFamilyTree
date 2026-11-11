@@ -1,8 +1,8 @@
 <?php
 
 // Architecture rules enforced in CI (docs/architecture/04-application-structure.md).
-// More rules arrive with the code they guard, e.g. "every family route authorises" in Phase 4.
-// Admin routes are checked route by route in tests/Feature/Admin/AdminAreaTest.php.
+// Admin routes are checked route by route in tests/Feature/Admin/AdminAreaTest.php, and every
+// family route is proven to return 404 for outsiders in tests/Feature/Families/FamilyTreeTest.php.
 
 arch('no debugging helpers are left in application code')
     ->expect(['dd', 'dump', 'ddd', 'ray', 'var_dump', 'print_r', 'die'])

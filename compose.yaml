@@ -26,6 +26,35 @@ services:
             - redis
             - mailpit
             - rustfs
+    # Background jobs (generations, later: media, reports, notifications). Same image and
+    # code as the app; Horizon restarts its workers when `php artisan horizon:terminate` runs.
+    horizon:
+        image: 'sail-8.5/app'
+        command: 'php artisan horizon'
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - laravel.test
+        restart: unless-stopped
+    # Scheduled tasks (nightly clean-ups, later: birthday reminders).
+    scheduler:
+        image: 'sail-8.5/app'
+        command: 'php artisan schedule:work'
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - laravel.test
+        restart: unless-stopped
     pgsql:
         image: 'postgres:18-alpine'
         ports:

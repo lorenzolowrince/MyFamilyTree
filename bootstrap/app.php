@@ -1,5 +1,7 @@
 <?php
 
+use App\Exceptions\InvalidRelationshipException;
+use App\Exceptions\VersionConflictException;
 use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -10,6 +12,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -31,6 +34,16 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Domain refusals are shown as ordinary form errors.
+        $exceptions->map(
+            InvalidRelationshipException::class,
+            fn (InvalidRelationshipException $e) => ValidationException::withMessages(['relationship' => $e->getMessage()]),
+        );
+        $exceptions->map(
+            VersionConflictException::class,
+            fn (VersionConflictException $e) => ValidationException::withMessages(['version' => $e->getMessage()]),
+        );
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

@@ -2,7 +2,7 @@
 
 A family heritage platform for documenting ancestry, managing family relationships, preserving photographs and documents, and connecting generations.
 
-**Status:** Phase 3 (authentication and users) built and awaiting review; staging deployment is waiting for the VPS. Family tree features start in Phase 4. See the [roadmap](docs/architecture/10-roadmap.md).
+**Status:** Phases 1 to 4 built (architecture, foundation, accounts, family tree core). The remaining phases are being built back to back in local Docker and reviewed together; deployment waits for the VPS. See the [roadmap](docs/architecture/10-roadmap.md).
 
 - Architecture: [docs/architecture/00-overview.md](docs/architecture/00-overview.md)
 - Implementation decisions: [docs/adr/](docs/adr/)
@@ -39,7 +39,7 @@ docker run --rm -v "$(pwd):/var/www/html" -w /var/www/html laravelsail/php84-com
 
 docker compose up -d                                       # first run builds the image (~10-30 min)
 docker compose exec laravel.test php artisan key:generate
-docker compose exec laravel.test php artisan migrate --seed # roles/permissions + a local test account
+docker compose exec laravel.test php artisan migrate --seed # roles/permissions, a local test account and a demo family
 docker compose exec laravel.test php artisan storage:ensure-bucket
 docker compose exec laravel.test npm ci
 docker compose exec laravel.test npm run build
@@ -53,12 +53,12 @@ Open <http://localhost>.
 
 ## Local services
 
-| Service             | URL                        | Credentials         |
-| ------------------- | -------------------------- | ------------------- |
-| App                 | <http://localhost>         | register an account |
-| Mailpit (all email) | <http://localhost:8025>    |                     |
-| RustFS console      | <http://localhost:9001>    | `sail` / `password` |
-| Horizon (queues)    | <http://localhost/horizon> | local only          |
+| Service             | URL                        | Credentials                                                                    |
+| ------------------- | -------------------------- | ------------------------------------------------------------------------------ |
+| App                 | <http://localhost>         | `test@example.com` / `password-for-local-dev` (has a demo family), or register |
+| Mailpit (all email) | <http://localhost:8025>    |                                                                                |
+| RustFS console      | <http://localhost:9001>    | `sail` / `password`                                                            |
+| Horizon (queues)    | <http://localhost/horizon> | local only                                                                     |
 
 ## Development commands
 
