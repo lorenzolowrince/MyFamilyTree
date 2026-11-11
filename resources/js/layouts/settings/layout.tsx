@@ -8,6 +8,7 @@ import { cn, toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
 import { edit } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
+import { index as sessionsIndex } from '@/routes/sessions';
 import type { NavItem } from '@/types';
 
 const sidebarNavItems: (NavItem & Required<Pick<NavItem, 'href'>>)[] = [
@@ -19,6 +20,11 @@ const sidebarNavItems: (NavItem & Required<Pick<NavItem, 'href'>>)[] = [
     {
         title: 'Security',
         href: editSecurity(),
+        icon: null,
+    },
+    {
+        title: 'Devices & history',
+        href: sessionsIndex(),
         icon: null,
     },
     {

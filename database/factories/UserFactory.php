@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\UserStatus;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -44,6 +45,27 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
+    }
+
+    public function superAdmin(): static
+    {
+        return $this->state(fn (array $attributes) => ['is_super_admin' => true]);
+    }
+
+    public function suspended(): static
+    {
+        return $this->state(fn (array $attributes) => ['status' => UserStatus::Suspended]);
+    }
+
+    public function deactivated(): static
+    {
+        return $this->state(fn (array $attributes) => ['status' => UserStatus::Deactivated]);
+    }
+
+    /** An account that only signs in with Google. */
+    public function withoutPassword(): static
+    {
+        return $this->state(fn (array $attributes) => ['password' => null]);
     }
 
     /**

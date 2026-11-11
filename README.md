@@ -2,7 +2,7 @@
 
 A family heritage platform for documenting ancestry, managing family relationships, preserving photographs and documents, and connecting generations.
 
-**Status:** Phase 2 (project foundation) complete. Feature modules start in Phase 3. See the [roadmap](docs/architecture/10-roadmap.md).
+**Status:** Phase 3 (authentication and users) built and awaiting review; staging deployment is waiting for the VPS. Family tree features start in Phase 4. See the [roadmap](docs/architecture/10-roadmap.md).
 
 - Architecture: [docs/architecture/00-overview.md](docs/architecture/00-overview.md)
 - Implementation decisions: [docs/adr/](docs/adr/)
@@ -39,7 +39,7 @@ docker run --rm -v "$(pwd):/var/www/html" -w /var/www/html laravelsail/php84-com
 
 docker compose up -d                                       # first run builds the image (~10-30 min)
 docker compose exec laravel.test php artisan key:generate
-docker compose exec laravel.test php artisan migrate
+docker compose exec laravel.test php artisan migrate --seed # roles/permissions + a local test account
 docker compose exec laravel.test php artisan storage:ensure-bucket
 docker compose exec laravel.test npm ci
 docker compose exec laravel.test npm run build
@@ -73,7 +73,11 @@ Run inside the container: `docker compose exec laravel.test <command>`.
 | Static analysis                    | `vendor/bin/phpstan analyse`          |
 | Frontend lint + format check (fix) | `npm run check` (`npm run check:fix`) |
 | TypeScript                         | `npm run types:check`                 |
-| Fresh database                     | `php artisan migrate:fresh`           |
+| Fresh database                     | `php artisan migrate:fresh --seed`    |
+| Make someone a Super Administrator | `php artisan admin:grant <email>`     |
+| Run scheduled tasks once           | `php artisan schedule:run`            |
+
+`migrate --seed` creates a local-only account: `test@example.com` / `password-for-local-dev`. To open the admin area (`/admin`), run `admin:grant` for your account and turn on two-factor authentication under Settings → Security.
 
 Tests always run against PostgreSQL (the `testing` database in the container), never SQLite, because the schema relies on PostgreSQL constraints, triggers and extensions.
 
@@ -85,6 +89,8 @@ Every variable is listed in [.env.example](.env.example) with local defaults. Ke
 - `SESSION_DRIVER=database`, `SESSION_ENCRYPT=true`: sessions in PostgreSQL so users can review and revoke devices.
 - `CACHE_STORE=redis`, `QUEUE_CONNECTION=redis`.
 - `FILESYSTEM_DISK=s3`: all media goes to private object storage.
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`: optional. "Continue with Google" appears once both are set (redirect URI `{APP_URL}/auth/google/callback`).
+- `SESSION_SECURE_COOKIE=true` on HTTPS environments (adds the `__Host-` cookie prefix).
 
 Staging and production values are stored as GitHub Environment secrets and written to the server's `.env`. **Never commit a `.env` file or any credential.** CI runs a secret scan on every push.
 

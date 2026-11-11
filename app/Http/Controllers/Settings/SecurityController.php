@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Actions\Account\RevokeSessions;
+use App\Enums\SocialProvider;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\PasswordUpdateRequest;
 use App\Http\Requests\Settings\TwoFactorAuthenticationRequest;
@@ -18,11 +20,13 @@ class SecurityController extends Controller
      */
     public function edit(TwoFactorAuthenticationRequest $request): Response
     {
+        $user = $request->user();
+
         $props = [
             'canManageTwoFactor' => Features::canManageTwoFactorAuthentication(),
             'canManagePasskeys' => Features::canManagePasskeys(),
             'passkeys' => Features::canManagePasskeys()
-                ? $request->user()
+                ? $user
                     ->passkeys()
                     ->select(['id', 'name', 'credential', 'created_at', 'last_used_at'])
                     ->latest()
@@ -38,12 +42,17 @@ class SecurityController extends Controller
                     ->all()
                 : [],
             'passwordRules' => Password::defaults()->toPasswordRulesString(),
+            'twoFactorRequired' => $user->mustUseTwoFactor(),
+            'google' => [
+                'available' => SocialProvider::Google->isConfigured(),
+                'connected' => $user->socialAccounts()->where('provider', SocialProvider::Google->value)->exists(),
+            ],
         ];
 
         if (Features::canManageTwoFactorAuthentication()) {
             $request->ensureStateIsValid();
 
-            $props['twoFactorEnabled'] = $request->user()->hasEnabledTwoFactorAuthentication();
+            $props['twoFactorEnabled'] = $user->hasEnabledTwoFactorAuthentication();
             $props['requiresConfirmation'] = Features::optionEnabled(Features::twoFactorAuthentication(), 'confirm');
         }
 
@@ -51,15 +60,17 @@ class SecurityController extends Controller
     }
 
     /**
-     * Update the user's password.
+     * Update the user's password and sign out every other device.
      */
-    public function update(PasswordUpdateRequest $request): RedirectResponse
+    public function update(PasswordUpdateRequest $request, RevokeSessions $revokeSessions): RedirectResponse
     {
         $request->user()->update([
             'password' => $request->password,
         ]);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Password updated.')]);
+        $revokeSessions->all($request->user(), exceptSessionId: $request->session()->getId());
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Password updated. Other devices have been signed out.')]);
 
         return back();
     }

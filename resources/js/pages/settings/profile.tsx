@@ -18,9 +18,13 @@ type PageProps = {
 export default function Profile({
     mustVerifyEmail,
     status,
+    timezones,
+    deletionGraceDays,
 }: {
     mustVerifyEmail: boolean;
     status?: string;
+    timezones: string[];
+    deletionGraceDays: number;
 }) {
     const { auth } = usePage<PageProps>().props;
 
@@ -34,7 +38,7 @@ export default function Profile({
                 <Heading
                     variant="small"
                     title="Profile"
-                    description="Update your name and email address"
+                    description="Update your name, email address and time zone"
                 />
 
                 <Form
@@ -85,6 +89,32 @@ export default function Profile({
                                 />
                             </div>
 
+                            <div className="grid gap-2">
+                                <Label htmlFor="timezone">Time zone</Label>
+
+                                <select
+                                    id="timezone"
+                                    name="timezone"
+                                    defaultValue={auth.user.timezone}
+                                    className="mt-1 block h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                                >
+                                    {timezones.map((timezone) => (
+                                        <option key={timezone} value={timezone}>
+                                            {timezone.replaceAll('_', ' ')}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <p className="text-xs text-muted-foreground">
+                                    Dates and times are shown in this time zone.
+                                </p>
+
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.timezone}
+                                />
+                            </div>
+
                             {mustVerifyEmail &&
                                 auth.user.email_verified_at === null && (
                                     <div>
@@ -123,7 +153,7 @@ export default function Profile({
                 </Form>
             </div>
 
-            <DeleteUser />
+            <DeleteUser graceDays={deletionGraceDays} />
         </>
     );
 }

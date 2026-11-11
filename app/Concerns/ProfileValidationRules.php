@@ -19,6 +19,7 @@ trait ProfileValidationRules
         return [
             'name' => $this->nameRules(),
             'email' => $this->emailRules($userId),
+            'timezone' => ['sometimes', 'required', 'string', 'timezone:all'],
         ];
     }
 
@@ -42,7 +43,8 @@ trait ProfileValidationRules
         return [
             'required',
             'string',
-            'email',
+            // The DNS check (does this domain accept mail?) needs network access: production only.
+            app()->isProduction() ? 'email:rfc,dns' : 'email:rfc',
             'max:255',
             $userId === null
                 ? Rule::unique(User::class)

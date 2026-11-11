@@ -1,6 +1,8 @@
 import { Form, Head } from '@inertiajs/react';
 import { useRef } from 'react';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
+import type { Props as ConnectedAccountsProps } from '@/components/connected-accounts';
+import ConnectedAccounts from '@/components/connected-accounts';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
@@ -15,8 +17,10 @@ import ManageTwoFactor from '@/components/manage-two-factor';
 // oxfmt-ignore
 type Props = {
     passwordRules: string;
+    twoFactorRequired: boolean;
 } & ManagePasskeysProps &
-    ManageTwoFactorProps;
+    ManageTwoFactorProps &
+    ConnectedAccountsProps;
 
 export default function Security(props: Props) {
     const passwordInput = useRef<HTMLInputElement>(null);
@@ -32,7 +36,7 @@ export default function Security(props: Props) {
                 <Heading
                     variant="small"
                     title="Update password"
-                    description="Ensure your account is using a long, random password to stay secure"
+                    description="Use at least 12 characters. Changing your password signs out your other devices."
                 />
 
                 <Form
@@ -124,11 +128,24 @@ export default function Security(props: Props) {
                 </Form>
             </div>
 
+            {props.twoFactorRequired && !props.twoFactorEnabled && (
+                <p
+                    className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-200/20 dark:bg-amber-500/10 dark:text-amber-100"
+                    role="alert"
+                >
+                    <strong>Two-factor authentication is required</strong> for
+                    family Owners and Administrators and for platform staff.
+                    Turn it on below to keep using those areas.
+                </p>
+            )}
+
             <ManageTwoFactor
                 canManageTwoFactor={props.canManageTwoFactor}
                 requiresConfirmation={props.requiresConfirmation}
                 twoFactorEnabled={props.twoFactorEnabled}
             />
+
+            <ConnectedAccounts google={props.google} />
 
             <ManagePasskeys
                 canManagePasskeys={props.canManagePasskeys}

@@ -53,6 +53,7 @@ sequenceDiagram
   GA->>S: rsync build to releases/<timestamp_sha>
   GA->>S: link shared/.env and storage
   GA->>S: php artisan migrate --force (migrator role)
+  GA->>S: php artisan db:seed --class=RolesAndPermissionsSeeder --force
   GA->>S: config, route, view, event cache
   GA->>S: switch "current" symlink (atomic)
   GA->>S: reload php-fpm, horizon:terminate (workers restart on new code)

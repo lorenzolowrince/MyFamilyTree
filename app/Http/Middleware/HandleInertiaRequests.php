@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -39,9 +40,34 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $this->user($request->user()),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+        ];
+    }
+
+    /**
+     * Only the fields the interface needs. The model itself is never sent to the browser,
+     * so a new column cannot leak by accident.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function user(?User $user): ?array
+    {
+        if ($user === null) {
+            return null;
+        }
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'email_verified_at' => $user->email_verified_at?->toIso8601String(),
+            'timezone' => $user->timezone,
+            'locale' => $user->locale,
+            'has_password' => $user->hasPassword(),
+            'two_factor_enabled' => $user->hasEnabledTwoFactorAuthentication(),
+            'is_super_admin' => $user->is_super_admin,
         ];
     }
 }

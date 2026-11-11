@@ -82,11 +82,17 @@ class AuthenticationTest extends TestCase
 
         RateLimiter::increment(md5('login'.implode('|', [$user->email, '127.0.0.1'])), amount: 5);
 
-        $response = $this->post(route('login.store'), [
+        $response = $this->from(route('login'))->post(route('login.store'), [
             'email' => $user->email,
             'password' => 'wrong-password',
         ]);
 
-        $response->assertTooManyRequests();
+        // Shown as a normal form error, and written to the sign-in history.
+        $response->assertRedirect(route('login'))->assertSessionHasErrors('email');
+        $this->assertGuest();
+        $this->assertDatabaseHas('login_activities', [
+            'event' => 'lockout',
+            'email_attempted' => $user->email,
+        ]);
     }
 }

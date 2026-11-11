@@ -84,6 +84,14 @@ jobs:
       - name: Static analysis (Larastan)
         run: vendor/bin/phpstan analyse --no-progress
 
+      - name: Migrations and production seeder run cleanly, twice
+        run: |
+          php artisan migrate --force
+          php artisan db:seed --class=RolesAndPermissionsSeeder --force
+          php artisan db:seed --class=RolesAndPermissionsSeeder --force
+          php artisan migrate:rollback --force
+          php artisan migrate --force
+
       - name: Tests (Pest, real PostgreSQL)
         run: php artisan test --parallel
 

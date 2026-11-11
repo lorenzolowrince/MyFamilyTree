@@ -1,13 +1,15 @@
+/** The signed-in user, exactly as shared by HandleInertiaRequests. */
 export type User = {
-    id: number;
+    id: string;
     name: string;
     email: string;
     avatar?: string;
     email_verified_at: string | null;
-    two_factor_enabled?: boolean;
-    created_at: string;
-    updated_at: string;
-    [key: string]: unknown;
+    timezone: string;
+    locale: string;
+    has_password: boolean;
+    two_factor_enabled: boolean;
+    is_super_admin: boolean;
 };
 
 export type Auth = {

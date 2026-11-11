@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Actions\Account\DeactivateAccount;
+use App\Actions\Account\RequestAccountDeletion;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
+use App\Models\User;
+use DateTimeZone;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +26,8 @@ class ProfileController extends Controller
         return Inertia::render('settings/profile', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
+            'timezones' => DateTimeZone::listIdentifiers(),
+            'deletionGraceDays' => User::DELETION_GRACE_DAYS,
         ]);
     }
 
@@ -44,15 +50,33 @@ class ProfileController extends Controller
     }
 
     /**
-     * Delete the user's profile.
+     * Pause the account. Nothing is deleted; signing in again offers to reactivate it.
      */
-    public function destroy(ProfileDeleteRequest $request): RedirectResponse
+    public function deactivate(ProfileDeleteRequest $request, DeactivateAccount $deactivate): RedirectResponse
     {
         $user = $request->user();
 
-        Auth::logout();
+        Auth::guard('web')->logout();
 
-        $user->delete();
+        $deactivate->handle($user);
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/');
+    }
+
+    /**
+     * Ask for the account to be deleted. It is deactivated now and erased after the grace
+     * period; signing in before then cancels the request.
+     */
+    public function destroy(ProfileDeleteRequest $request, RequestAccountDeletion $requestDeletion): RedirectResponse
+    {
+        $user = $request->user();
+
+        $requestDeletion->handle($user);
+
+        Auth::guard('web')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

@@ -1,4 +1,5 @@
 import { Form, Head } from '@inertiajs/react';
+import GoogleButton from '@/components/google-button';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
@@ -11,12 +12,23 @@ import { store } from '@/routes/register';
 
 type Props = {
     passwordRules: string;
+    canLoginWithGoogle: boolean;
 };
 
-export default function Register({ passwordRules }: Props) {
+export default function Register({ passwordRules, canLoginWithGoogle }: Props) {
     return (
         <>
             <Head title="Register" />
+
+            {canLoginWithGoogle && (
+                <div className="mb-6">
+                    <GoogleButton
+                        label="Sign up with Google"
+                        separator="Or sign up with email"
+                    />
+                </div>
+            )}
+
             <Form
                 {...store.form()}
                 resetOnSuccess={['password', 'password_confirmation']}
@@ -69,6 +81,10 @@ export default function Register({ passwordRules }: Props) {
                                     placeholder="Password"
                                     passwordrules={passwordRules}
                                 />
+                                <p className="text-xs text-muted-foreground">
+                                    At least 12 characters. A few random words
+                                    work well.
+                                </p>
                                 <InputError message={errors.password} />
                             </div>
 

@@ -127,9 +127,12 @@ return [
     |
     */
 
+    // Over HTTPS the cookie gets the `__Host-` prefix: browsers then only accept it when it is
+    // Secure, has no Domain and Path=/, so another subdomain can never set or overwrite it.
+    // (Keep SESSION_DOMAIN empty and SESSION_PATH=/ wherever SESSION_SECURE_COOKIE=true.)
     'cookie' => env(
         'SESSION_COOKIE',
-        Str::slug((string) env('APP_NAME', 'laravel')).'-session',
+        (env('SESSION_SECURE_COOKIE') ? '__Host-' : '').Str::slug((string) env('APP_NAME', 'laravel')).'-session',
     ),
 
     /*

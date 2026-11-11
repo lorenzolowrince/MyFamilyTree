@@ -4,6 +4,9 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Enums\SocialProvider;
+use App\Http\Responses\SamePasswordResetLinkResponse;
+use Illuminate\Auth\Events\Lockout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -11,6 +14,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
+use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 
@@ -21,7 +25,9 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Password reset: answer the same way whether or not the email has an account,
+        // so the form cannot be used to discover who is registered.
+        $this->app->bind(FailedPasswordResetLinkRequestResponse::class, SamePasswordResetLinkResponse::class);
     }
 
     /**
@@ -50,6 +56,7 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::loginView(fn (Request $request) => Inertia::render('auth/login', [
             'canResetPassword' => Features::enabled(Features::resetPasswords()),
+            'canLoginWithGoogle' => SocialProvider::Google->isConfigured(),
             'status' => $request->session()->get('status'),
         ]));
 
@@ -69,11 +76,14 @@ class FortifyServiceProvider extends ServiceProvider
 
         Fortify::registerView(fn () => Inertia::render('auth/register', [
             'passwordRules' => Password::defaults()->toPasswordRulesString(),
+            'canLoginWithGoogle' => SocialProvider::Google->isConfigured(),
         ]));
 
         Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/two-factor-challenge'));
 
-        Fortify::confirmPasswordView(fn () => Inertia::render('auth/confirm-password'));
+        Fortify::confirmPasswordView(fn (Request $request) => Inertia::render('auth/confirm-password', [
+            'hasPassword' => (bool) $request->user()?->hasPassword(),
+        ]));
     }
 
     /**
@@ -88,7 +98,23 @@ class FortifyServiceProvider extends ServiceProvider
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
 
-            return Limit::perMinute(5)->by($throttleKey);
+            // Recorded in the sign-in history, then shown as a normal form error.
+            $lockedOut = function () use ($request) {
+                event(new Lockout($request));
+
+                return back()
+                    ->withInput($request->only(Fortify::username(), 'remember'))
+                    ->withErrors([
+                        Fortify::username() => __('Too many sign-in attempts. Please wait a few minutes and try again.'),
+                    ]);
+            };
+
+            // 5 per minute and 20 per hour for each email + IP (progressive), plus a per-IP ceiling.
+            return [
+                Limit::perMinute(5)->by($throttleKey)->response($lockedOut),
+                Limit::perHour(20)->by('hour|'.$throttleKey)->response($lockedOut),
+                Limit::perMinute(60)->by('ip|'.$request->ip())->response($lockedOut),
+            ];
         });
 
         RateLimiter::for('passkeys', function (Request $request) {
