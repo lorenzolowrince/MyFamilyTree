@@ -5,14 +5,16 @@ namespace App\Http\Controllers\Families;
 use App\Actions\Members\CreateMember;
 use App\Actions\Members\DeleteMember;
 use App\Actions\Members\UpdateMember;
+use App\Enums\NameType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Families\MemberRequest;
 use App\Models\Family;
 use App\Models\FamilyMember;
+use App\Models\MemberName;
 use App\Models\User;
-use App\Services\Authorization\FamilyAccess;
 use App\Services\Genealogy\DuplicateDetector;
 use App\Services\Genealogy\RelativesPresenter;
+use App\Services\History\TimelineBuilder;
 use App\Services\Privacy\MemberPresenter;
 use App\Services\Privacy\MemberPrivacy;
 use App\Support\FormOptions;
@@ -96,7 +98,7 @@ class MemberController extends Controller
         return response()->json(['members' => $matches]);
     }
 
-    public function show(Request $request, Family $family, FamilyMember $member, RelativesPresenter $relatives, FamilyAccess $access): Response
+    public function show(Request $request, Family $family, FamilyMember $member, RelativesPresenter $relatives, TimelineBuilder $timeline): Response
     {
         $this->authorize('view', $member);
 
@@ -110,6 +112,15 @@ class MemberController extends Controller
             'family' => ['slug' => $family->slug, 'name' => $family->name],
             'member' => $this->presenter->profile($member, $viewer),
             'relatives' => $relatives->for($family, $member, $viewer),
+            'names' => $member->names()->orderBy('created_at')->get()->map(fn (MemberName $name): array => [
+                'id' => $name->id,
+                'name' => $name->name,
+                'type' => $name->type->value,
+                'type_label' => $name->type->label(),
+                'notes' => $name->notes,
+            ])->all(),
+            'nameTypes' => array_map(fn (NameType $case): array => ['value' => $case->value, 'label' => $case->label()], NameType::cases()),
+            'timeline' => $timeline->build($family, $viewer, ['member' => $member->id])['items'],
             'isRoot' => $family->root_member_id === $member->id,
             'linkedToMe' => $viewer->isSelf($member),
             'iAmLinked' => $viewer->linkedMemberId !== null,
@@ -214,7 +225,11 @@ class MemberController extends Controller
                     ->orWhereRaw('immutable_unaccent(coalesce(nickname, \'\')) ILIKE immutable_unaccent(?)', [$like])
                     ->orWhereRaw('immutable_unaccent(coalesce(maiden_name, \'\')) ILIKE immutable_unaccent(?)', [$like])
                     ->orWhereRaw("search_vector @@ plainto_tsquery('simple', immutable_unaccent(?))", [$search])
-                    ->orWhereRaw("{$similarity} >= 0.3", [$search]);
+                    ->orWhereRaw("{$similarity} >= 0.3", [$search])
+                    // Birth names, married names, aliases and other spellings.
+                    ->orWhereExists(fn ($names) => $names->from('member_names')
+                        ->whereColumn('member_names.member_id', 'family_members.id')
+                        ->whereRaw('immutable_unaccent(member_names.name) ILIKE immutable_unaccent(?)', [$like]));
             })
             ->orderByRaw("{$similarity} DESC", [$search])
             ->orderBy('full_name');

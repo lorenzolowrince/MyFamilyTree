@@ -6,11 +6,16 @@ use App\Actions\Families\CreateFamily;
 use App\Actions\Members\CreateMember;
 use App\Actions\Relationships\LinkParentAndChild;
 use App\Actions\Relationships\LinkPartners;
+use App\Enums\EventType;
 use App\Enums\ParentSubtype;
+use App\Enums\TimelineCategory;
 use App\Jobs\RecomputeGenerations;
 use App\Models\Family;
+use App\Models\FamilyEvent;
 use App\Models\FamilyMember;
+use App\Models\TimelineEntry;
 use App\Models\User;
+use App\Support\FuzzyDate\FuzzyDate;
 use Illuminate\Database\Seeder;
 use RuntimeException;
 
@@ -109,6 +114,51 @@ class DemoFamilySeeder extends Seeder
         $family->forceFill(['root_member_id' => $this->people['Gimbang Lidau']->id])->save();
 
         RecomputeGenerations::dispatchSync($family->id);
+
+        $this->history($family, $owner);
+    }
+
+    /** A few full birth dates (for birthday reminders), timeline entries and an event. */
+    private function history(Family $family, User $owner): void
+    {
+        $soon = now()->addDays(12);
+
+        foreach (['Adam Daniel' => [1980, $soon->month, $soon->day], 'Eve Daniel' => [1984, 3, 14], 'Josie Gimbang' => [1968, 8, 2]] as $name => [$year, $month, $day]) {
+            $person = $this->people[$name];
+            $person->birth = FuzzyDate::day($year, $month, min($day, 28));
+            $person->save();
+        }
+
+        $entries = [
+            ['Moved from Ranau to Kota Kinabalu', TimelineCategory::Migration, 1958, ['Gimbang Lidau', 'Sarah binti Majin'], 'The family left the kampung for work in town.'],
+            ['Daniel graduated as a teacher', TimelineCategory::Education, 1974, ['Daniel Gimbang'], null],
+            ['Opened the family sundry shop', TimelineCategory::Career, 1962, ['Gimbang Lidau'], null],
+        ];
+
+        foreach ($entries as [$title, $category, $year, $who, $description]) {
+            $entry = new TimelineEntry;
+            $entry->family_id = $family->id;
+            $entry->title = $title;
+            $entry->category = $category;
+            $entry->description = $description;
+            $entry->event = FuzzyDate::year($year);
+            $entry->created_by = $owner->id;
+            $entry->save();
+
+            foreach ($who as $name) {
+                $entry->participants()->attach($this->people[$name]->id, ['family_id' => $family->id]);
+            }
+        }
+
+        $event = new FamilyEvent;
+        $event->family_id = $family->id;
+        $event->title = 'Family reunion';
+        $event->type = EventType::Reunion;
+        $event->description = 'Everyone is welcome. Bring old photographs.';
+        $event->starts_at = now()->addDays(30)->setTime(2, 0);
+        $event->location_text = 'Kampung Sinakagon, Ranau';
+        $event->created_by = $owner->id;
+        $event->save();
     }
 
     /**

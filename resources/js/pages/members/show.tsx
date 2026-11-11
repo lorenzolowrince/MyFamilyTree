@@ -6,6 +6,8 @@ import InputError from '@/components/input-error';
 import { AddRelativeDialog } from '@/components/members/add-relative-dialog';
 import { MemberAvatar } from '@/components/members/member-avatar';
 import { MemberEditDialog } from '@/components/members/member-edit-dialog';
+import { MemberNames } from '@/components/members/member-names';
+import { TimelineList } from '@/components/timeline/timeline-list';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { tree } from '@/routes/families';
@@ -22,18 +24,23 @@ import {
 import type {
     FamilyRef,
     GenealogyOptions,
+    MemberNameItem,
     MemberProfile,
     MemberSummary,
     Option,
     RelationshipInfo,
     Relatives,
     RelativeKind,
+    TimelineItem,
 } from '@/types';
 
 type Props = {
     family: FamilyRef;
     member: MemberProfile;
     relatives: Relatives;
+    names: MemberNameItem[];
+    nameTypes: Option[];
+    timeline: TimelineItem[];
     isRoot: boolean;
     linkedToMe: boolean;
     can: {
@@ -196,6 +203,9 @@ export default function MemberShow({
     family,
     member,
     relatives,
+    names,
+    nameTypes,
+    timeline,
     isRoot,
     linkedToMe,
     can,
@@ -511,6 +521,26 @@ export default function MemberShow({
                         </RelativeSection>
                     </div>
                 </section>
+
+                <MemberNames
+                    family={family}
+                    memberId={member.id}
+                    names={names}
+                    types={nameTypes}
+                    canEdit={can.update}
+                />
+
+                {timeline.length > 0 && (
+                    <section aria-labelledby="life-heading">
+                        <h2
+                            id="life-heading"
+                            className="mb-3 text-base font-medium"
+                        >
+                            Life events
+                        </h2>
+                        <TimelineList family={family} items={timeline} />
+                    </section>
+                )}
 
                 {(can.setRoot || can.delete) && (
                     <section

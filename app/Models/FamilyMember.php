@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -100,6 +101,12 @@ class FamilyMember extends Model
     public function family(): BelongsTo
     {
         return $this->belongsTo(Family::class);
+    }
+
+    /** @return HasMany<MemberName, $this> */
+    public function names(): HasMany
+    {
+        return $this->hasMany(MemberName::class, 'member_id');
     }
 
     /** @return BelongsTo<Place, $this> */

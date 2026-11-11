@@ -2,7 +2,7 @@
 
 A family heritage platform for documenting ancestry, managing family relationships, preserving photographs and documents, and connecting generations.
 
-**Status:** Phases 1 to 4 built (architecture, foundation, accounts, family tree core). The remaining phases are being built back to back in local Docker and reviewed together; deployment waits for the VPS. See the [roadmap](docs/architecture/10-roadmap.md).
+**Status:** Phases 1 to 5 built (architecture, foundation, accounts, family tree core, profiles and history). The remaining phases are being built back to back in local Docker and reviewed together; deployment waits for the VPS. See the [roadmap](docs/architecture/10-roadmap.md).
 
 - Architecture: [docs/architecture/00-overview.md](docs/architecture/00-overview.md)
 - Implementation decisions: [docs/adr/](docs/adr/)

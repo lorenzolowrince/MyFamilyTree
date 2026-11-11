@@ -12,7 +12,9 @@ import {
 } from 'lucide-react';
 import { dashboard } from '@/routes';
 import { index as familiesIndex, tree } from '@/routes/families';
+import { index as eventsIndex } from '@/routes/families/events';
 import { index as membersIndex } from '@/routes/families/members';
+import { index as timelineIndex } from '@/routes/families/timeline';
 import { edit as editProfile } from '@/routes/profile';
 import type { CurrentFamily, NavItem } from '@/types';
 
@@ -35,10 +37,18 @@ export function mainNavItems(family: CurrentFamily | null): NavItem[] {
             href: family ? membersIndex(family.slug) : familiesIndex(),
             icon: Users,
         },
-        { title: 'Family Timeline', icon: History, availableInPhase: 5 },
+        {
+            title: 'Family Timeline',
+            href: family ? timelineIndex(family.slug) : familiesIndex(),
+            icon: History,
+        },
         { title: 'Photo Gallery', icon: Images, availableInPhase: 7 },
         { title: 'Documents', icon: FileText, availableInPhase: 7 },
-        { title: 'Family Events', icon: CalendarDays, availableInPhase: 5 },
+        {
+            title: 'Family Events',
+            href: family ? eventsIndex(family.slug) : familiesIndex(),
+            icon: CalendarDays,
+        },
         { title: 'Invitations', icon: MailPlus, availableInPhase: 6 },
         { title: 'Reports', icon: Printer, availableInPhase: 8 },
         { title: 'Settings', href: editProfile(), icon: Settings },

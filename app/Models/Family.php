@@ -96,6 +96,18 @@ class Family extends Model
         return $this->hasMany(Place::class);
     }
 
+    /** @return HasMany<TimelineEntry, $this> */
+    public function entries(): HasMany
+    {
+        return $this->hasMany(TimelineEntry::class);
+    }
+
+    /** @return HasMany<FamilyEvent, $this> */
+    public function events(): HasMany
+    {
+        return $this->hasMany(FamilyEvent::class);
+    }
+
     /** @return BelongsTo<FamilyMember, $this> */
     public function rootMember(): BelongsTo
     {

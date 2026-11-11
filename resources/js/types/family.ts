@@ -162,3 +162,78 @@ export type Paginated<T> = {
     prev_page_url: string | null;
     next_page_url: string | null;
 };
+
+// --- History (timeline, events, dashboard) -----------------------------------------
+
+export type TimelineItem = {
+    id: string;
+    /** `entry` is a recorded entry; the others are taken from people and marriages. */
+    kind: 'entry' | 'birth' | 'death' | 'marriage';
+    category: string;
+    title: string;
+    description: string | null;
+    date: FuzzyDateValue;
+    sort: string;
+    year: number | null;
+    place: string | null;
+    visibility: string | null;
+    people: MemberSummary[];
+    editable: boolean;
+};
+
+export type MemberNameItem = {
+    id: string;
+    name: string;
+    type: string;
+    type_label: string;
+    notes: string | null;
+};
+
+export type FamilyEventItem = {
+    id: string;
+    title: string;
+    type: string;
+    type_label: string;
+    description: string | null;
+    starts_at: string;
+    ends_at: string | null;
+    starts_local: string;
+    ends_local: string | null;
+    all_day: boolean;
+    location_text: string | null;
+    notify_members: boolean;
+    happened: boolean;
+    on_timeline: boolean;
+};
+
+export type FamilyOverview = {
+    family: FamilyRef;
+    stats: {
+        members: number;
+        living: number;
+        deceased: number;
+        generations: number;
+        relationships: number;
+    };
+    recent: MemberSummary[];
+    birthdays: {
+        person: MemberSummary;
+        date: string;
+        days: number;
+        turning: number;
+    }[];
+    anniversaries: {
+        people: MemberSummary[];
+        date: string;
+        days: number;
+        years: number;
+    }[];
+    events: {
+        id: string;
+        title: string;
+        type: string;
+        starts_at: string;
+        all_day: boolean;
+        location: string | null;
+    }[];
+};

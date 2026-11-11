@@ -1,16 +1,19 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { Network, Plus } from 'lucide-react';
+import { FamilyOverview } from '@/components/dashboard/family-overview';
 import { FamilyCard } from '@/components/family-card';
 import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
 import { create as createFamily } from '@/routes/families';
-import type { FamilySummary } from '@/types';
+import type { FamilyOverview as Overview, FamilySummary } from '@/types';
 
 export default function Dashboard({
     families,
+    overview,
     can,
 }: {
     families: FamilySummary[];
+    overview: Overview | null;
     can: { createFamily: boolean };
 }) {
     const { auth } = usePage().props;
@@ -25,8 +28,8 @@ export default function Dashboard({
                             Welcome, {auth.user?.name}
                         </h1>
                         <p className="text-muted-foreground">
-                            Your family trees. Birthdays and recent activity
-                            will appear here as the family grows.
+                            Birthdays, anniversaries and events coming up in
+                            your family.
                         </p>
                     </div>
                     {can.createFamily && families.length > 0 && (
@@ -68,13 +71,24 @@ export default function Dashboard({
                         )}
                     </section>
                 ) : (
-                    <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                        {families.map((family) => (
-                            <li key={family.slug}>
-                                <FamilyCard family={family} />
-                            </li>
-                        ))}
-                    </ul>
+                    <>
+                        {overview && <FamilyOverview overview={overview} />}
+                        <section aria-labelledby="trees-heading">
+                            <h2
+                                id="trees-heading"
+                                className="mb-3 text-lg font-medium"
+                            >
+                                Your family trees
+                            </h2>
+                            <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                                {families.map((family) => (
+                                    <li key={family.slug}>
+                                        <FamilyCard family={family} />
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+                    </>
                 )}
             </div>
         </>

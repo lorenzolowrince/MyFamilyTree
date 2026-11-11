@@ -1,10 +1,13 @@
 <?php
 
 use App\Http\Controllers\Families\CoverController;
+use App\Http\Controllers\Families\EventController;
 use App\Http\Controllers\Families\FamilyController;
 use App\Http\Controllers\Families\MemberController;
+use App\Http\Controllers\Families\MemberNameController;
 use App\Http\Controllers\Families\RelationshipController;
 use App\Http\Controllers\Families\RelativeController;
+use App\Http\Controllers\Families\TimelineController;
 use App\Http\Controllers\Families\TreeController;
 use App\Http\Middleware\EnsureTwoFactorEnabled;
 use App\Http\Middleware\RememberCurrentFamily;
@@ -45,6 +48,20 @@ Route::middleware(['auth', 'verified', EnsureTwoFactorEnabled::class])->group(fu
             Route::delete('members/{member}', [MemberController::class, 'destroy'])->whereUuid('member')->name('members.destroy');
             Route::post('members/{member}/root', [MemberController::class, 'root'])->whereUuid('member')->name('members.root');
             Route::post('members/{member}/relatives', [RelativeController::class, 'store'])->whereUuid('member')->name('members.relatives.store');
+
+            Route::post('members/{member}/names', [MemberNameController::class, 'store'])->whereUuid('member')->name('members.names.store');
+            Route::delete('members/{member}/names/{name}', [MemberNameController::class, 'destroy'])->whereUuid(['member', 'name'])->name('members.names.destroy');
+
+            Route::get('timeline', [TimelineController::class, 'index'])->name('timeline.index');
+            Route::post('timeline', [TimelineController::class, 'store'])->name('timeline.store');
+            Route::patch('timeline/{entry}', [TimelineController::class, 'update'])->whereUuid('entry')->name('timeline.update');
+            Route::delete('timeline/{entry}', [TimelineController::class, 'destroy'])->whereUuid('entry')->name('timeline.destroy');
+
+            Route::get('events', [EventController::class, 'index'])->name('events.index');
+            Route::post('events', [EventController::class, 'store'])->name('events.store');
+            Route::patch('events/{event}', [EventController::class, 'update'])->whereUuid('event')->name('events.update');
+            Route::delete('events/{event}', [EventController::class, 'destroy'])->whereUuid('event')->name('events.destroy');
+            Route::post('events/{event}/timeline', [EventController::class, 'convert'])->whereUuid('event')->name('events.convert');
 
             Route::patch('relationships/{relationship}', [RelationshipController::class, 'update'])->whereUuid('relationship')->name('relationships.update');
             Route::delete('relationships/{relationship}', [RelationshipController::class, 'destroy'])->whereUuid('relationship')->name('relationships.destroy');
