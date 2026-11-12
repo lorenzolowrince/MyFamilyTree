@@ -63,7 +63,9 @@ The branches are stacked: each one starts from the previous phase. No pull reque
 
 **Phase 9 (PWA)**, see [ADR 0008](docs/adr/0008-phase-9-pwa.md). Part 1 is done on `feature/pwa-shell`: manifest, icons, service worker (caches only the app's own code, never pages or personal data), offline page, and "Install the app" with the iPhone/iPad guide.
 
-**Next:** **Fable 5.2** designs the offline snapshot (what is stored on a phone, how it is encrypted and wiped) and the outbox that syncs offline edits (conflicts, replay, permissions that changed while offline). Meanwhile **Opus 5.5** can build the parts that do not depend on that design: web push, camera upload and mobile tree polish.
+**Offline design:** written by Fable 5.2 in [ADR 0008](docs/adr/0008-phase-9-pwa.md), "Proposed design: offline copy and sync". It **awaits the developer's answers to five decisions** listed there (the main one: require an offline passcode). Do not build the offline copy or sync before those are answered.
+
+**Next:** **Opus 5.5** builds web push, camera upload and mobile tree polish (no decision needed), then the offline copy and sync from the approved design. Bring the finished offline code back to **Fable 5.2** for review.
 
 ## Pending (by phase)
 
@@ -111,6 +113,7 @@ The branches are stacked: each one starts from the previous phase. No pull reque
 
 ## Latest activity
 
+- 2026-11-13: Offline copy and sync designed (Fable 5.2), in ADR 0008; awaiting approval of five decisions.
 - 2026-11-13: Privacy fix (Fable 5.2) on `fix/hidden-fields-in-edits`: when someone who cannot see a living person's details edited that person, the proposal showed them the hidden values, and approving it (or publishing directly) erased them. Hidden fields are now removed from such edits on the server (`MemberPrivacy::editableFields`), from the proposal view, and from the edit form.
 - 2026-11-13: Phase 9 part 1 (Opus 5.5) on `feature/pwa-shell`: installable app (manifest, own icons, service worker, offline page, install guide). Checked in headless Edge: installable, caches hold no pages or family data, offline page appears when the network is cut. `vite-plugin-pwa` not used (ADR 0008).
 - 2026-11-12: Privacy and security review of Phase 8 (Fable 5.2), on branch `fix/phase-8-privacy-review`: GEDCOM export for sharing is now the default and the complete backup needs the password again; GEDCOM parsing is bounded (300,000 lines, every value has a maximum length); a report is only handed out in the role it was made in; the Chromium container is on its own internal network with no internet, database or storage access.
