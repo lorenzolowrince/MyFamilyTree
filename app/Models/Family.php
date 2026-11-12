@@ -120,6 +120,18 @@ class Family extends Model
         return $this->hasMany(FamilyEvent::class);
     }
 
+    /** @return HasMany<GedcomImport, $this> */
+    public function imports(): HasMany
+    {
+        return $this->hasMany(GedcomImport::class);
+    }
+
+    /** @return HasMany<ReportExport, $this> */
+    public function reports(): HasMany
+    {
+        return $this->hasMany(ReportExport::class);
+    }
+
     /** @return HasMany<FamilyPhoto, $this> */
     public function photos(): HasMany
     {

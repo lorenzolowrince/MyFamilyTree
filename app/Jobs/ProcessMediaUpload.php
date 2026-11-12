@@ -27,7 +27,9 @@ class ProcessMediaUpload implements ShouldQueue
     public function __construct(
         public readonly string $kind,
         public readonly string $id,
-    ) {}
+    ) {
+        $this->onQueue('media');
+    }
 
     /**
      * Seconds to wait before each retry.

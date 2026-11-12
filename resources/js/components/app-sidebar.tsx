@@ -1,11 +1,13 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     Activity,
+    ArrowLeftRight,
     ChevronsUpDown,
     ClipboardCheck,
     ShieldCheck,
     Waypoints,
 } from 'lucide-react';
+import { index as gedcomIndex } from '@/routes/families/gedcom';
 import { finder as relationshipFinder } from '@/routes/families/relationships';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
@@ -46,6 +48,15 @@ export function AppSidebar() {
                   icon: ClipboardCheck,
                   badge: currentFamily.pendingChanges,
               },
+              ...(permissions.includes('gedcom.export')
+                  ? [
+                        {
+                            title: 'Import & Export',
+                            href: gedcomIndex(currentFamily.slug),
+                            icon: ArrowLeftRight,
+                        },
+                    ]
+                  : []),
               ...(permissions.includes('audit.view_records')
                   ? [
                         {

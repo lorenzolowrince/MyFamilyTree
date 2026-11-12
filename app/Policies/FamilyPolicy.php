@@ -55,6 +55,21 @@ class FamilyPolicy
         return $this->check($user, $family, FamilyPermission::FamilyDelete);
     }
 
+    public function exportGedcom(User $user, Family $family): Response
+    {
+        return $this->check($user, $family, FamilyPermission::GedcomExport);
+    }
+
+    public function importGedcom(User $user, Family $family): Response
+    {
+        return $this->check($user, $family, FamilyPermission::GedcomImport);
+    }
+
+    public function generateReports(User $user, Family $family): Response
+    {
+        return $this->check($user, $family, FamilyPermission::ReportsGenerate);
+    }
+
     public function transferOwnership(User $user, Family $family): Response
     {
         return $this->check($user, $family, FamilyPermission::FamilyTransferOwnership);

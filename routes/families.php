@@ -7,6 +7,7 @@ use App\Http\Controllers\Families\CoverController;
 use App\Http\Controllers\Families\DocumentController;
 use App\Http\Controllers\Families\EventController;
 use App\Http\Controllers\Families\FamilyController;
+use App\Http\Controllers\Families\GedcomController;
 use App\Http\Controllers\Families\MemberController;
 use App\Http\Controllers\Families\MemberNameController;
 use App\Http\Controllers\Families\PeopleController;
@@ -116,6 +117,14 @@ Route::middleware(['auth', 'verified', EnsureTwoFactorEnabled::class])->group(fu
             // History of changes.
             Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
             Route::get('activity/audit', [ActivityController::class, 'audit'])->name('activity.audit');
+
+            // GEDCOM: export the tree, import a file (checked and previewed before anything changes).
+            Route::get('gedcom', [GedcomController::class, 'index'])->name('gedcom.index');
+            Route::get('gedcom/export', [GedcomController::class, 'export'])->middleware('throttle:10,60')->name('gedcom.export');
+            Route::post('gedcom/imports', [GedcomController::class, 'store'])->middleware('throttle:10,60')->name('gedcom.store');
+            Route::get('gedcom/imports/{import}', [GedcomController::class, 'show'])->whereUuid('import')->name('gedcom.show');
+            Route::post('gedcom/imports/{import}/confirm', [GedcomController::class, 'confirm'])->whereUuid('import')->name('gedcom.confirm');
+            Route::delete('gedcom/imports/{import}', [GedcomController::class, 'cancel'])->whereUuid('import')->name('gedcom.cancel');
 
             Route::get('relationship-finder', [RelationshipFinderController::class, 'show'])->middleware('throttle:60,1')->name('relationships.finder');
 
