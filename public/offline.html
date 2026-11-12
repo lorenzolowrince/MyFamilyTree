@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#17653c" />
+        <title>You are offline - My Family Tree</title>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <!-- Shown by the service worker (public/sw.js) when a page cannot be reached.
+             It holds no personal data and runs no script. -->
+        <style>
+            :root {
+                color-scheme: light dark;
+                --bg: #ffffff;
+                --fg: #0a0a0a;
+                --muted: #737373;
+                --border: #e5e5e5;
+                --primary: #17653c;
+                --primary-fg: #fafafa;
+            }
+
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --bg: #0a0a0a;
+                    --fg: #fafafa;
+                    --muted: #a3a3a3;
+                    --border: #262626;
+                    --primary: #6ac48c;
+                    --primary-fg: #0a0a0a;
+                }
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+                min-height: 100vh;
+                display: grid;
+                place-items: center;
+                padding: 16px;
+                background: var(--bg);
+                color: var(--fg);
+                font-family:
+                    'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+            }
+
+            main {
+                max-width: 24rem;
+                text-align: center;
+            }
+
+            img {
+                width: 64px;
+                height: 64px;
+            }
+
+            h1 {
+                font-size: 1.25rem;
+                font-weight: 600;
+                margin: 1rem 0 0.5rem;
+            }
+
+            p {
+                color: var(--muted);
+                line-height: 1.5;
+                margin: 0 0 1.5rem;
+            }
+
+            a {
+                display: inline-block;
+                padding: 0.5rem 1rem;
+                border-radius: 0.5rem;
+                background: var(--primary);
+                color: var(--primary-fg);
+                font-weight: 500;
+                text-decoration: none;
+            }
+
+            a:focus-visible {
+                outline: 2px solid var(--fg);
+                outline-offset: 2px;
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <img src="/icons/icon-192.png" alt="" />
+            <h1>You are offline</h1>
+            <p>
+                This page needs an internet connection. Check that you are
+                connected, then try again.
+            </p>
+            <a href="">Try again</a>
+        </main>
+    </body>
+</html>

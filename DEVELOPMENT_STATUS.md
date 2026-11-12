@@ -1,10 +1,10 @@
 # Development status
 
-Last updated: 2026-11-12. Rules for working on the project are in [CLAUDE.md](CLAUDE.md), and the plan is the [roadmap](docs/architecture/10-roadmap.md).
+Last updated: 2026-11-13. Rules for working on the project are in [CLAUDE.md](CLAUDE.md), and the plan is the [roadmap](docs/architecture/10-roadmap.md).
 
 ## Overall progress
 
-**Stage:** Phases 1–8 done; Phase 9 (PWA) is next. Everything is built locally in Docker. The staging VPS has not been bought yet, so nothing is deployed. The developer has asked for phases 8–10 to be built back to back, then tested together.
+**Stage:** Phases 1–8 done; Phase 9 (PWA) in progress (part 1 done). Everything is built locally in Docker. The staging VPS has not been bought yet, so nothing is deployed. The developer has asked for phases 8–10 to be built back to back, then tested together.
 
 | Phase                                  | State                       | Branch                             | Pushed |
 | -------------------------------------- | --------------------------- | ---------------------------------- | ------ |
@@ -16,12 +16,12 @@ Last updated: 2026-11-12. Rules for working on the project are in [CLAUDE.md](CL
 | 6 Collaboration                        | Done                        | `feature/phase-6-collaboration`    | Yes    |
 | 7 Media & documents                    | Done                        | `feature/phase-7-media`            | Yes    |
 | 8 Reports, GEDCOM, relationship finder | Done                        | `feature/phase-8-reports-gedcom`   | Yes    |
-| 9 PWA                                  | Not started                 |                                    |        |
+| 9 PWA                                  | In progress (part 1)        | `feature/pwa-shell`                | Yes    |
 | 10 Hardening & launch                  | Not started (needs the VPS) |                                    |        |
 
 The branches are stacked: each one starts from the previous phase. No pull requests have been opened yet.
 
-**Last full test run:** 376 passed, 1 skipped (HEIC), after the Phase 8 privacy review.
+**Last full test run:** 380 passed, 1 skipped (HEIC), after Phase 9 part 1.
 
 ## Completed modules
 
@@ -61,15 +61,13 @@ The branches are stacked: each one starts from the previous phase. No pull reque
 
 ## In progress
 
-Nothing. Phase 8 and its privacy and security review are finished (see the review table at the end of [ADR 0007](docs/adr/0007-phase-8-reports-gedcom-finder.md)).
+**Phase 9 (PWA)**, see [ADR 0008](docs/adr/0008-phase-9-pwa.md). Part 1 is done on `feature/pwa-shell`: manifest, icons, service worker (caches only the app's own code, never pages or personal data), offline page, and "Install the app" with the iPhone/iPad guide.
 
-**Next:** Phase 9 (PWA) with **Opus 5.5**. Ask **Fable 5.2** to design two parts before they are built: the offline snapshot (what is stored on a phone, how it is encrypted and wiped) and the outbox that syncs offline edits (conflicts, replay, permissions that changed while offline).
+**Next:** **Fable 5.2** designs the offline snapshot (what is stored on a phone, how it is encrypted and wiped) and the outbox that syncs offline edits (conflicts, replay, permissions that changed while offline). Meanwhile **Opus 5.5** can build the parts that do not depend on that design: web push, camera upload and mobile tree polish.
 
 ## Pending (by phase)
 
 - **Phase 9 (PWA):**
-    - manifest, icons and service worker;
-    - iOS install guidance;
     - opt-in encrypted offline snapshot and offline viewer;
     - an outbox that syncs changes made offline, with conflict handling;
     - web push (birthdays, anniversaries, events, approvals); `family_events.notify_members` is acted on here;
@@ -113,6 +111,7 @@ Nothing. Phase 8 and its privacy and security review are finished (see the revie
 
 ## Latest activity
 
+- 2026-11-13: Phase 9 part 1 (Opus 5.5) on `feature/pwa-shell`: installable app (manifest, own icons, service worker, offline page, install guide). Checked in headless Edge: installable, caches hold no pages or family data, offline page appears when the network is cut. `vite-plugin-pwa` not used (ADR 0008).
 - 2026-11-12: Privacy and security review of Phase 8 (Fable 5.2), on branch `fix/phase-8-privacy-review`: GEDCOM export for sharing is now the default and the complete backup needs the password again; GEDCOM parsing is bounded (300,000 lines, every value has a maximum length); a report is only handed out in the role it was made in; the Chromium container is on its own internal network with no internet, database or storage access.
 - 2026-11-12: Phase 8 finished (PDF reports with Chromium/Gotenberg; ADR 0007) and pushed. `CLAUDE.md` is now tracked in Git.
 - 2026-11-12: Phases 4–7 pushed. Phase 8 parts 1 (finder and search) and 2 (GEDCOM) committed; part 3 (PDF reports) in progress. `CLAUDE.md` and this file created.

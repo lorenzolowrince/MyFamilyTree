@@ -10,6 +10,7 @@ import {
 import { index as gedcomIndex } from '@/routes/families/gedcom';
 import { finder as relationshipFinder } from '@/routes/families/relationships';
 import AppLogo from '@/components/app-logo';
+import { InstallApp } from '@/components/install-app';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -139,6 +140,7 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
+                <InstallApp />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>
