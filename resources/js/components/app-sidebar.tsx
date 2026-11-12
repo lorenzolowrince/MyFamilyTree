@@ -4,7 +4,9 @@ import {
     ChevronsUpDown,
     ClipboardCheck,
     ShieldCheck,
+    Waypoints,
 } from 'lucide-react';
+import { finder as relationshipFinder } from '@/routes/families/relationships';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -33,6 +35,11 @@ export function AppSidebar() {
     // Shown to everyone in a family: reviewers decide here, others follow their proposals.
     const familyExtras: NavItem[] = currentFamily
         ? [
+              {
+                  title: 'Relationship Finder',
+                  href: relationshipFinder(currentFamily.slug),
+                  icon: Waypoints,
+              },
               {
                   title: 'Approvals',
                   href: changesIndex(currentFamily.slug),

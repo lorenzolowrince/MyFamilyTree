@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Families;
 use App\Actions\Members\CreateMember;
 use App\Actions\Members\DeleteMember;
 use App\Actions\Members\UpdateMember;
+use App\Enums\FamilyPermission;
 use App\Enums\NameType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Families\MemberRequest;
@@ -17,16 +18,20 @@ use App\Models\User;
 use App\Services\Collaboration\ChangeMode;
 use App\Services\Collaboration\ChangeRequests;
 use App\Services\Genealogy\DuplicateDetector;
+use App\Services\Genealogy\FamilyGraphLoader;
 use App\Services\Genealogy\RelativesPresenter;
 use App\Services\History\TimelineBuilder;
 use App\Services\Media\MediaPresenter;
 use App\Services\Privacy\MemberPresenter;
 use App\Services\Privacy\MemberPrivacy;
+use App\Services\Privacy\MemberViewer;
 use App\Support\FormOptions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -48,8 +53,9 @@ class MemberController extends Controller
         $user = $request->user();
         $viewer = $this->privacy->viewer($user, $family);
         $search = trim((string) $request->query('search', ''));
+        $filters = $this->filters($request, $family, $viewer);
 
-        $members = $this->search($family, $search, $user)
+        $members = $this->filter($this->search($family, $search, $user), $filters, $family, $viewer)
             ->paginate(30)
             ->withQueryString()
             ->through(fn (FamilyMember $member): array => $this->presenter->summary($member, $viewer));
@@ -57,10 +63,117 @@ class MemberController extends Controller
         return Inertia::render('members/index', [
             'family' => ['slug' => $family->slug, 'name' => $family->name],
             'members' => $members,
-            'filters' => ['search' => $search],
+            'filters' => [
+                'search' => $search,
+                ...$filters,
+                'branch' => $filters['branch'] === null ? null : ['id' => $filters['branch']->id, 'name' => $filters['branch']->full_name],
+            ],
+            'generations' => (int) FamilyMember::query()->inFamily($family)->max('generation'),
             'can' => ['addPeople' => $user->can('create', [FamilyMember::class, $family])],
             'options' => FormOptions::genealogy(),
         ]);
+    }
+
+    /**
+     * The advanced search filters, cleaned up.
+     *
+     * @return array{surname: string, place: string, born_from: int|null, born_to: int|null, generation: int|null, status: string|null, branch: FamilyMember|null}
+     */
+    private function filters(Request $request, Family $family, MemberViewer $viewer): array
+    {
+        $text = fn (string $key): string => mb_substr(trim((string) (is_string($request->query($key)) ? $request->query($key) : '')), 0, 100);
+        $number = fn (string $key, int $max): ?int => is_numeric($request->query($key)) && (int) $request->query($key) >= 1 && (int) $request->query($key) <= $max
+            ? (int) $request->query($key)
+            : null;
+
+        $branch = is_string($request->query('branch')) && Str::isUuid($request->query('branch'))
+            ? FamilyMember::query()->inFamily($family)->find($request->query('branch'))
+            : null;
+
+        return [
+            'surname' => $text('surname'),
+            'place' => $text('place'),
+            'born_from' => $number('born_from', 3000),
+            'born_to' => $number('born_to', 3000),
+            'generation' => $number('generation', 200),
+            'status' => in_array($request->query('status'), ['living', 'deceased'], true) ? (string) $request->query('status') : null,
+            // A branch can only be chosen from someone the viewer may see.
+            'branch' => $branch !== null && $viewer->canView($branch) ? $branch : null,
+        ];
+    }
+
+    /**
+     * Narrow a member query by surname, years, generation, place, living or not, and branch.
+     *
+     * Birth years and places of living people are private for some roles. For those roles
+     * the year and place filters only ever match people whose details they may see:
+     * otherwise "born 1980 to 1980" would reveal exactly what the profile page hides.
+     *
+     * @param  Builder<FamilyMember>  $query
+     * @param  array{surname: string, place: string, born_from: int|null, born_to: int|null, generation: int|null, status: string|null, branch: FamilyMember|null}  $filters
+     * @return Builder<FamilyMember>
+     */
+    private function filter(Builder $query, array $filters, Family $family, MemberViewer $viewer): Builder
+    {
+        if ($filters['surname'] !== '') {
+            $like = '%'.addcslashes($filters['surname'], '%_\\').'%';
+
+            $query->where(fn (Builder $name) => $name
+                ->whereRaw("immutable_unaccent(coalesce(surname, '')) ILIKE immutable_unaccent(?)", [$like])
+                ->orWhereRaw("immutable_unaccent(coalesce(maiden_name, '')) ILIKE immutable_unaccent(?)", [$like])
+                ->orWhereRaw('immutable_unaccent(full_name) ILIKE immutable_unaccent(?)', [$like]));
+        }
+
+        if ($filters['generation'] !== null) {
+            $query->where('generation', $filters['generation']);
+        }
+
+        if ($filters['status'] !== null) {
+            $query->where('living_status', $filters['status']);
+        }
+
+        if ($filters['branch'] !== null) {
+            $graph = app(FamilyGraphLoader::class)->for($family);
+
+            $query->whereIn('family_members.id', [$filters['branch']->id, ...array_keys($graph->descendants($filters['branch']->id))]);
+        }
+
+        $sensitive = $filters['place'] !== '' || $filters['born_from'] !== null || $filters['born_to'] !== null;
+
+        if ($sensitive && ! $viewer->has(FamilyPermission::MembersViewLivingSensitive)) {
+            $cutoff = now()->year - FamilyMember::PRESUMED_LIVING_YEARS;
+
+            $query->where(function (Builder $open) use ($viewer, $cutoff): void {
+                $open->where('living_status', 'deceased')
+                    ->orWhere(fn (Builder $old) => $old->where('living_status', 'unknown')->whereNotNull('birth_date')->whereYear('birth_date', '<=', $cutoff));
+
+                if ($viewer->linkedMemberId !== null) {
+                    $open->orWhere('family_members.id', $viewer->linkedMemberId);
+                }
+            });
+        }
+
+        if ($filters['born_from'] !== null) {
+            $query->whereYear('birth_date', '>=', $filters['born_from']);
+        }
+
+        if ($filters['born_to'] !== null) {
+            $query->whereYear('birth_date', '<=', $filters['born_to']);
+        }
+
+        if ($filters['place'] !== '') {
+            $places = DB::table('places')
+                ->where('family_id', $family->id)
+                ->whereRaw('immutable_unaccent(name) ILIKE immutable_unaccent(?)', ['%'.addcslashes($filters['place'], '%_\\').'%'])
+                ->select('id');
+
+            $query->where(fn (Builder $place) => $place
+                ->whereIn('birth_place_id', $places)
+                ->orWhereIn('death_place_id', $places)
+                ->orWhereIn('hometown_place_id', $places));
+        }
+
+        return $query;
     }
 
     /** People matching a name, for the "choose an existing person" picker. */

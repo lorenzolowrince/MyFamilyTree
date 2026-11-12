@@ -12,6 +12,7 @@ use App\Http\Controllers\Families\MemberNameController;
 use App\Http\Controllers\Families\PeopleController;
 use App\Http\Controllers\Families\PhotoController;
 use App\Http\Controllers\Families\RelationshipController;
+use App\Http\Controllers\Families\RelationshipFinderController;
 use App\Http\Controllers\Families\RelativeController;
 use App\Http\Controllers\Families\TimelineAttachmentController;
 use App\Http\Controllers\Families\TimelineController;
@@ -115,6 +116,8 @@ Route::middleware(['auth', 'verified', EnsureTwoFactorEnabled::class])->group(fu
             // History of changes.
             Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
             Route::get('activity/audit', [ActivityController::class, 'audit'])->name('activity.audit');
+
+            Route::get('relationship-finder', [RelationshipFinderController::class, 'show'])->middleware('throttle:60,1')->name('relationships.finder');
 
             Route::patch('relationships/{relationship}', [RelationshipController::class, 'update'])->whereUuid('relationship')->name('relationships.update');
             Route::delete('relationships/{relationship}', [RelationshipController::class, 'destroy'])->whereUuid('relationship')->name('relationships.destroy');

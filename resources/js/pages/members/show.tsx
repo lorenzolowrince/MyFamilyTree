@@ -1,5 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Network, Pencil, Trash2, UserPlus } from 'lucide-react';
+import {
+    Network,
+    Pencil,
+    Trash2,
+    UserPlus,
+    Users,
+    Waypoints,
+} from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import InputError from '@/components/input-error';
@@ -24,6 +31,7 @@ import {
 } from '@/routes/families/photos';
 import {
     destroy as destroyRelationship,
+    finder,
     update as updateRelationship,
 } from '@/routes/families/relationships';
 import type {
@@ -301,6 +309,28 @@ export default function MemberShow({
                             >
                                 <Network aria-hidden="true" />
                                 Show in tree
+                            </Link>
+                        </Button>
+                        {!linkedToMe && (
+                            <Button variant="outline" size="sm" asChild>
+                                <Link
+                                    href={finder.url(family.slug, {
+                                        query: { to: member.id },
+                                    })}
+                                >
+                                    <Waypoints aria-hidden="true" />
+                                    How are we related?
+                                </Link>
+                            </Button>
+                        )}
+                        <Button variant="outline" size="sm" asChild>
+                            <Link
+                                href={membersIndex.url(family.slug, {
+                                    query: { branch: member.id },
+                                })}
+                            >
+                                <Users aria-hidden="true" />
+                                Descendants
                             </Link>
                         </Button>
                         {can.update && (

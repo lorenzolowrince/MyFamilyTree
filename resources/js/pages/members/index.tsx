@@ -12,11 +12,38 @@ import type { FamilyRef, MemberSummary, Paginated } from '@/types';
 type Props = {
     family: FamilyRef;
     members: Paginated<MemberSummary>;
-    filters: { search: string };
+    filters: {
+        search: string;
+        surname: string;
+        place: string;
+        born_from: number | null;
+        born_to: number | null;
+        generation: number | null;
+        status: 'living' | 'deceased' | null;
+        branch: { id: string; name: string } | null;
+    };
+    /** The deepest generation in the tree. */
+    generations: number;
     can: { addPeople: boolean };
 };
 
-export default function MembersIndex({ family, members, filters }: Props) {
+const selectClass =
+    'h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+
+export default function MembersIndex({
+    family,
+    members,
+    filters,
+    generations,
+}: Props) {
+    const narrowed =
+        filters.surname !== '' ||
+        filters.place !== '' ||
+        filters.born_from !== null ||
+        filters.born_to !== null ||
+        filters.generation !== null ||
+        filters.status !== null;
+
     return (
         <>
             <Head title={`${family.name} – Members`} />
@@ -40,23 +67,151 @@ export default function MembersIndex({ family, members, filters }: Props) {
                 <Form
                     {...index.form(family.slug)}
                     options={{ preserveState: true }}
-                    className="flex max-w-md items-end gap-2"
+                    className="grid max-w-3xl gap-3"
                     role="search"
                 >
-                    <div className="grid flex-1 gap-2">
-                        <Label htmlFor="search">Search by name</Label>
-                        <Input
-                            id="search"
-                            type="search"
-                            name="search"
-                            defaultValue={filters.search}
-                            placeholder="e.g. Lidau"
+                    {filters.branch && (
+                        <input
+                            type="hidden"
+                            name="branch"
+                            value={filters.branch.id}
                         />
+                    )}
+                    <div className="flex max-w-md items-end gap-2">
+                        <div className="grid flex-1 gap-2">
+                            <Label htmlFor="search">Search by name</Label>
+                            <Input
+                                id="search"
+                                type="search"
+                                name="search"
+                                defaultValue={filters.search}
+                                placeholder="e.g. Lidau"
+                            />
+                        </div>
+                        <Button type="submit" variant="outline">
+                            Search
+                        </Button>
+                        {(narrowed || filters.search || filters.branch) && (
+                            <Button variant="ghost" asChild>
+                                <Link href={index(family.slug)}>Clear</Link>
+                            </Button>
+                        )}
                     </div>
-                    <Button type="submit" variant="outline">
-                        Search
-                    </Button>
+
+                    <details open={narrowed} className="rounded-lg border">
+                        <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
+                            More ways to search
+                        </summary>
+                        <div className="grid gap-3 border-t p-3 sm:grid-cols-2 lg:grid-cols-3">
+                            <div className="grid gap-2">
+                                <Label htmlFor="filter-surname">
+                                    Surname or family name
+                                </Label>
+                                <Input
+                                    id="filter-surname"
+                                    name="surname"
+                                    maxLength={100}
+                                    defaultValue={filters.surname}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="filter-place">
+                                    Place (birth, death or hometown)
+                                </Label>
+                                <Input
+                                    id="filter-place"
+                                    name="place"
+                                    maxLength={100}
+                                    defaultValue={filters.place}
+                                    placeholder="e.g. Ranau"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="filter-born-from">
+                                        Born from
+                                    </Label>
+                                    <Input
+                                        id="filter-born-from"
+                                        name="born_from"
+                                        inputMode="numeric"
+                                        maxLength={4}
+                                        placeholder="Year"
+                                        defaultValue={filters.born_from ?? ''}
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="filter-born-to">
+                                        Born to
+                                    </Label>
+                                    <Input
+                                        id="filter-born-to"
+                                        name="born_to"
+                                        inputMode="numeric"
+                                        maxLength={4}
+                                        placeholder="Year"
+                                        defaultValue={filters.born_to ?? ''}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="filter-generation">
+                                    Generation
+                                </Label>
+                                <select
+                                    id="filter-generation"
+                                    name="generation"
+                                    defaultValue={filters.generation ?? ''}
+                                    className={selectClass}
+                                >
+                                    <option value="">Any</option>
+                                    {Array.from(
+                                        { length: generations },
+                                        (_, number) => number + 1,
+                                    ).map((number) => (
+                                        <option key={number} value={number}>
+                                            Generation {number}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="filter-status">
+                                    Living or deceased
+                                </Label>
+                                <select
+                                    id="filter-status"
+                                    name="status"
+                                    defaultValue={filters.status ?? ''}
+                                    className={selectClass}
+                                >
+                                    <option value="">Either</option>
+                                    <option value="living">Living</option>
+                                    <option value="deceased">Deceased</option>
+                                </select>
+                            </div>
+                            <div className="flex items-end">
+                                <Button type="submit" variant="outline">
+                                    Apply
+                                </Button>
+                            </div>
+                        </div>
+                    </details>
                 </Form>
+
+                {filters.branch && (
+                    <p className="flex flex-wrap items-center gap-2 text-sm">
+                        <Badge variant="secondary">
+                            {filters.branch.name} and descendants
+                        </Badge>
+                        <Link
+                            href={index(family.slug)}
+                            className="underline underline-offset-4"
+                        >
+                            Show the whole family
+                        </Link>
+                    </p>
+                )}
 
                 <p className="text-sm text-muted-foreground" role="status">
                     {members.total.toLocaleString()}{' '}
@@ -66,9 +221,11 @@ export default function MembersIndex({ family, members, filters }: Props) {
 
                 {members.data.length === 0 ? (
                     <p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-                        {filters.search
-                            ? 'Nobody found with that name. Spelling close to the name also works.'
-                            : 'Nobody has been added yet. Open the family tree to add the first person.'}
+                        {narrowed || filters.branch
+                            ? 'Nobody matches. Details of living relatives that you are not allowed to see are never searched.'
+                            : filters.search
+                              ? 'Nobody found with that name. Spelling close to the name also works.'
+                              : 'Nobody has been added yet. Open the family tree to add the first person.'}
                     </p>
                 ) : (
                     <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
