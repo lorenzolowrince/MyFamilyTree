@@ -311,12 +311,9 @@ class MemberController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $data = $request->memberData();
-
-        // Research notes and visibility are for editors and above, even on your own profile.
-        if (! $this->privacy->viewer($user, $family)->canViewNotes($member)) {
-            unset($data['notes'], $data['visibility']);
-        }
+        // Research notes and visibility are for editors and above, even on your own profile;
+        // a living person's details can only be changed by someone who can see them.
+        $data = $this->privacy->editableFields($request->memberData(), $member, $this->privacy->viewer($user, $family));
 
         if ($this->mode->forEdit($user, $family, $member) === ChangeMode::PROPOSE) {
             $proposal = $this->changes->proposeMemberUpdate($family, $user, $member, $data, (int) $request->validated('version'));

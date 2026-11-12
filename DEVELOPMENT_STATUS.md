@@ -21,7 +21,7 @@ Last updated: 2026-11-13. Rules for working on the project are in [CLAUDE.md](CL
 
 The branches are stacked: each one starts from the previous phase. No pull requests have been opened yet.
 
-**Last full test run:** 380 passed, 1 skipped (HEIC), after Phase 9 part 1.
+**Last full test run:** 381 passed, 1 skipped (HEIC), after the hidden-fields fix.
 
 ## Completed modules
 
@@ -111,6 +111,7 @@ The branches are stacked: each one starts from the previous phase. No pull reque
 
 ## Latest activity
 
+- 2026-11-13: Privacy fix (Fable 5.2) on `fix/hidden-fields-in-edits`: when someone who cannot see a living person's details edited that person, the proposal showed them the hidden values, and approving it (or publishing directly) erased them. Hidden fields are now removed from such edits on the server (`MemberPrivacy::editableFields`), from the proposal view, and from the edit form.
 - 2026-11-13: Phase 9 part 1 (Opus 5.5) on `feature/pwa-shell`: installable app (manifest, own icons, service worker, offline page, install guide). Checked in headless Edge: installable, caches hold no pages or family data, offline page appears when the network is cut. `vite-plugin-pwa` not used (ADR 0008).
 - 2026-11-12: Privacy and security review of Phase 8 (Fable 5.2), on branch `fix/phase-8-privacy-review`: GEDCOM export for sharing is now the default and the complete backup needs the password again; GEDCOM parsing is bounded (300,000 lines, every value has a maximum length); a report is only handed out in the role it was made in; the Chromium container is on its own internal network with no internet, database or storage access.
 - 2026-11-12: Phase 8 finished (PDF reports with Chromium/Gotenberg; ADR 0007) and pushed. `CLAUDE.md` is now tracked in Git.

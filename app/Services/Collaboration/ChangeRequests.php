@@ -227,7 +227,10 @@ class ChangeRequests
                 $conflict = $request->base_version !== null && $member->version !== $request->base_version;
                 $current = self::snapshot($member);
 
-                foreach (self::ordered($payload) as $field => $value) {
+                // The current value of a field is shown only to someone who may see that field.
+                $shown = $this->privacy->editableFields($payload, $member, $this->privacy->viewer($viewer, $family));
+
+                foreach (self::ordered($shown) as $field => $value) {
                     $rows[] = [
                         'label' => self::MEMBER_FIELDS[$field] ?? Str::headline((string) $field),
                         'old' => self::display((string) $field, $current[$field] ?? null),
@@ -294,6 +297,14 @@ class ChangeRequests
 
                 if ($request->base_version !== $member->version && ! $force) {
                     throw new VersionConflictException;
+                }
+
+                // The submitter's limits apply: what they could not see, their proposal cannot change.
+                // (Someone who has since left the family has no limits to apply; the reviewer decides.)
+                $limits = $this->privacy->viewer($submitter, $family);
+
+                if ($limits->role !== null) {
+                    $payload = $this->privacy->editableFields($payload, $member, $limits);
                 }
 
                 app(UpdateMember::class)->handle($member, $submitter, $payload, $member->version);

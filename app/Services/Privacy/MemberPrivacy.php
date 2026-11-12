@@ -14,7 +14,35 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class MemberPrivacy
 {
+    /**
+     * Input fields that hold a living person's personal details. MemberPresenter hides them
+     * from viewers without `canViewSensitive`; those viewers may not change them either.
+     */
+    public const SENSITIVE_FIELDS = ['birth', 'birth_place', 'hometown', 'occupation', 'education', 'nationality', 'biography'];
+
+    /** Input fields for editors and above. */
+    public const EDITOR_FIELDS = ['notes', 'visibility'];
+
     public function __construct(private readonly FamilyAccess $access) {}
+
+    /**
+     * Removes from an edit the fields this viewer cannot see on this person.
+     *
+     * Someone who cannot see a field is shown it as empty, so their edit would otherwise
+     * erase it, and the "current value" of a proposal would reveal it.
+     *
+     * @param  array<string, mixed>  $data  validated member fields
+     * @return array<string, mixed>
+     */
+    public function editableFields(array $data, FamilyMember $member, MemberViewer $viewer): array
+    {
+        $hidden = [
+            ...($viewer->canViewSensitive($member) ? [] : self::SENSITIVE_FIELDS),
+            ...($viewer->canViewNotes($member) ? [] : self::EDITOR_FIELDS),
+        ];
+
+        return array_diff_key($data, array_flip($hidden));
+    }
 
     public function viewer(User $user, Family $family): MemberViewer
     {

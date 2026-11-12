@@ -14,6 +14,7 @@ use App\Notifications\ChangeRequestDecided;
 use App\Notifications\ChangeRequestSubmitted;
 use App\Notifications\FamilyInvitationSent;
 use App\Notifications\MemberJoinedFamily;
+use App\Support\FuzzyDate\FuzzyDate;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\AnonymousNotifiable;
@@ -458,6 +459,80 @@ test('the approval policy can make editors propose and let contributors publish'
     $this->actingAs($owner)->post(route('families.changes.approve', [$family, $change]))->assertSessionHasNoErrors();
 
     expect(FamilyMember::query()->where('full_name', 'By Editor')->exists())->toBeTrue();
+});
+
+test('an edit by someone who cannot see a living person\'s details neither reveals nor erases them', function () {
+    Notification::fake();
+    [$family, $owner] = treeFamily();
+    $contributor = memberWithRole($family, FamilyRole::Contributor);
+    $siti = person($family, 'Siti', [
+        'living_status' => LivingStatus::Living, 'birth' => FuzzyDate::year(1990), 'occupation' => 'Nurse',
+        'biography' => 'Lives in Kota Belud.', 'notes' => 'Editors only',
+    ]);
+
+    // What a form sends when those fields were shown as empty, plus a guess at a hidden one.
+    $blind = fn (int $version, string $name): array => [
+        'version' => $version, 'full_name' => $name, 'living_status' => 'living',
+        'birth' => ['year' => null, 'month' => null, 'day' => null, 'qualifier' => 'exact'],
+        'birth_place' => '', 'hometown' => '', 'occupation' => 'Guess', 'education' => '', 'nationality' => '', 'biography' => '',
+        'notes' => '', 'visibility' => 'private',
+    ];
+
+    $this->actingAs($contributor)->patch(route('families.members.update', [$family, $siti]), $blind(1, 'Siti binti Ali'))->assertRedirect();
+
+    $change = ChangeRequest::query()->sole();
+    expect(array_keys($change->payload))->toBe(['full_name']);
+
+    $this->actingAs($contributor)->get(route('families.changes.index', $family))->assertOk()
+        ->assertDontSee('1990')->assertDontSee('Nurse')->assertDontSee('Kota Belud')->assertDontSee('Editors only')
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('pending.0.rows', [
+            ['label' => 'Full name', 'old' => 'Siti', 'new' => 'Siti binti Ali'],
+        ]));
+
+    // A proposal stored before this rule existed: its hidden fields are not shown to the
+    // submitter and are not applied on approval.
+    $change->forceFill(['payload' => [...$change->payload, 'occupation' => null, 'biography' => null, 'notes' => null]])->save();
+
+    $this->get(route('families.changes.index', $family))->assertOk()
+        ->assertDontSee('Nurse')->assertDontSee('Kota Belud')->assertDontSee('Editors only')
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('pending.0.rows', 1));
+
+    // The reviewer, who may see them, still sees every row.
+    $this->actingAs($owner)->get(route('families.changes.index', $family))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('pending.0.rows', 4));
+
+    $this->post(route('families.changes.approve', [$family, $change]))->assertSessionHasNoErrors();
+
+    expect($siti->refresh())
+        ->full_name->toBe('Siti binti Ali')
+        ->occupation->toBe('Nurse')
+        ->biography->toBe('Lives in Kota Belud.')
+        ->notes->toBe('Editors only')
+        ->and($siti->birth->label())->toBe('1990');
+
+    // Publishing directly does not erase them either.
+    $this->patch(route('families.update', $family), ['name' => $family->name, 'contributors_publish_directly' => true])->assertSessionHasNoErrors();
+    $this->actingAs($contributor)->patch(route('families.members.update', [$family, $siti]), $blind(2, 'Siti binti Ali Hassan'))->assertRedirect();
+
+    expect($siti->refresh())
+        ->full_name->toBe('Siti binti Ali Hassan')
+        ->occupation->toBe('Nurse')
+        ->biography->toBe('Lives in Kota Belud.')
+        ->notes->toBe('Editors only')
+        ->visibility->toBe(Visibility::Family)
+        ->and($siti->birth->label())->toBe('1990');
+
+    // Someone who sees the details can still change them, and a deceased person's are open to all.
+    $this->actingAs($owner)->patch(route('families.members.update', [$family, $siti]), [
+        'version' => 3, 'full_name' => 'Siti binti Ali Hassan', 'living_status' => 'living', 'occupation' => 'Matron',
+    ])->assertSessionHasNoErrors();
+    expect($siti->refresh()->occupation)->toBe('Matron');
+
+    $ahmad = person($family, 'Ahmad', ['living_status' => LivingStatus::Deceased]);
+    $this->actingAs($contributor)->patch(route('families.members.update', [$family, $ahmad]), [
+        'version' => 1, 'full_name' => 'Ahmad', 'living_status' => 'deceased', 'occupation' => 'Farmer',
+    ])->assertRedirect();
+    expect($ahmad->refresh()->occupation)->toBe('Farmer');
 });
 
 test('a viewer may propose changes to their own profile only', function () {

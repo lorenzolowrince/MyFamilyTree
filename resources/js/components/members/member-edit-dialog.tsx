@@ -47,6 +47,17 @@ type FormData = {
     visibility: string;
 };
 
+/** Hidden from people who may not see a living person's details (MemberPrivacy::SENSITIVE_FIELDS). */
+const SENSITIVE_FIELDS = [
+    'birth',
+    'birth_place',
+    'hometown',
+    'occupation',
+    'education',
+    'nationality',
+    'biography',
+] as const;
+
 function Field({
     id,
     label,
@@ -125,13 +136,24 @@ export function MemberEditDialog({
     const submit = (event: FormEvent) => {
         event.preventDefault();
 
-        form.transform((data) => ({
-            ...data,
-            gender: data.gender || null,
-            death: data.living_status === 'deceased' ? data.death : null,
-            death_place:
-                data.living_status === 'deceased' ? data.death_place : null,
-        }));
+        form.transform((data) => {
+            const sent: Record<string, unknown> = {
+                ...data,
+                gender: data.gender || null,
+                death: data.living_status === 'deceased' ? data.death : null,
+                death_place:
+                    data.living_status === 'deceased' ? data.death_place : null,
+            };
+
+            // Details this editor cannot see are not sent, so they are not changed.
+            if (member.sensitive_hidden) {
+                for (const field of SENSITIVE_FIELDS) {
+                    delete sent[field];
+                }
+            }
+
+            return sent;
+        });
 
         form.patch(update.url({ family: family.slug, member: member.id }), {
             preserveScroll: true,
@@ -217,14 +239,26 @@ export function MemberEditDialog({
                         </Field>
                     </div>
 
-                    <FuzzyDateInput
-                        label="Born"
-                        value={form.data.birth}
-                        onChange={(value) => form.setData('birth', value)}
-                        errors={errors}
-                        errorPrefix="birth"
-                    />
-                    {text('birth_place', 'Place of birth')}
+                    {member.sensitive_hidden ? (
+                        <p className="rounded-lg border bg-muted/50 p-3 text-sm text-muted-foreground">
+                            Dates, places and other personal details of living
+                            people are private. They stay as they are; an editor
+                            or administrator of this family can change them.
+                        </p>
+                    ) : (
+                        <>
+                            <FuzzyDateInput
+                                label="Born"
+                                value={form.data.birth}
+                                onChange={(value) =>
+                                    form.setData('birth', value)
+                                }
+                                errors={errors}
+                                errorPrefix="birth"
+                            />
+                            {text('birth_place', 'Place of birth')}
+                        </>
+                    )}
 
                     {form.data.living_status === 'deceased' && (
                         <>
@@ -241,29 +275,36 @@ export function MemberEditDialog({
                         </>
                     )}
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        {text('hometown', 'Hometown')}
-                        {text('nationality', 'Nationality', 100)}
-                        {text('occupation', 'Occupation')}
-                        {text('education', 'Education')}
-                    </div>
+                    {!member.sensitive_hidden && (
+                        <>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                {text('hometown', 'Hometown')}
+                                {text('nationality', 'Nationality', 100)}
+                                {text('occupation', 'Occupation')}
+                                {text('education', 'Education')}
+                            </div>
 
-                    <Field
-                        id="edit-biography"
-                        label="Life story"
-                        error={errors.biography}
-                    >
-                        <textarea
-                            id="edit-biography"
-                            rows={5}
-                            maxLength={20000}
-                            value={form.data.biography}
-                            onChange={(event) =>
-                                form.setData('biography', event.target.value)
-                            }
-                            className={`${fieldClass} py-2`}
-                        />
-                    </Field>
+                            <Field
+                                id="edit-biography"
+                                label="Life story"
+                                error={errors.biography}
+                            >
+                                <textarea
+                                    id="edit-biography"
+                                    rows={5}
+                                    maxLength={20000}
+                                    value={form.data.biography}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'biography',
+                                            event.target.value,
+                                        )
+                                    }
+                                    className={`${fieldClass} py-2`}
+                                />
+                            </Field>
+                        </>
+                    )}
 
                     {canEditRestricted && (
                         <>
