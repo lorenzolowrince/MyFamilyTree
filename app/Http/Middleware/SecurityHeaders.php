@@ -29,7 +29,8 @@ class SecurityHeaders
         $headers->set('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(), payment=(), usb=()');
         $headers->set('Cross-Origin-Opener-Policy', 'same-origin');
 
-        if (! $this->isExempt($request)) {
+        // A stricter policy set by the response itself (served files: nothing may run) is kept.
+        if (! $this->isExempt($request) && ! $headers->has('Content-Security-Policy')) {
             $headers->set('Content-Security-Policy', $this->contentSecurityPolicy($nonce));
         }
 

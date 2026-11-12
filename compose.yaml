@@ -132,10 +132,34 @@ services:
             timeout: 10s
             retries: 3
             start_period: 40s
+    # Virus scanner for uploads. First start downloads the signature database (a few
+    # minutes, about 300 MB) and needs roughly 1.5 GB of memory. Not published to the host.
+    clamav:
+        image: 'clamav/clamav:stable'
+        environment:
+            CLAMD_CONF_StreamMaxLength: 100M
+            CLAMD_CONF_MaxFileSize: 100M
+            CLAMD_CONF_MaxScanSize: 200M
+            CLAMD_STARTUP_TIMEOUT: 600
+        volumes:
+            - 'sail-clamav:/var/lib/clamav'
+        networks:
+            - sail
+        healthcheck:
+            test:
+                - CMD
+                - clamdcheck.sh
+            interval: 60s
+            timeout: 10s
+            retries: 3
+            start_period: 600s
+        restart: unless-stopped
 networks:
     sail:
         driver: bridge
 volumes:
+    sail-clamav:
+        driver: local
     sail-pgsql:
         driver: local
     sail-redis:

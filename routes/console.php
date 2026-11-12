@@ -13,3 +13,6 @@ Schedule::command('model:prune', ['--model' => [LoginActivity::class]])->dailyAt
 
 // Expired password-reset tokens.
 Schedule::command('auth:clear-resets')->dailyAt('03:30');
+
+// Erase photos and documents deleted more than 30 days ago and release their storage.
+Schedule::command('media:purge')->dailyAt('03:40')->withoutOverlapping();

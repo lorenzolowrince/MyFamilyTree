@@ -6,6 +6,10 @@ use App\Listeners\RecordLoginActivity;
 use App\Models\User;
 use App\Services\Audit\HistoryRecorder;
 use App\Services\Authorization\FamilyAccess;
+use App\Services\Media\ClamAvScanner;
+use App\Services\Media\MediaMemo;
+use App\Services\Media\NullScanner;
+use App\Services\Media\VirusScanner;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -30,6 +34,13 @@ class AppServiceProvider extends ServiceProvider
 
         // One recorder per request, so its audit rows share a request id.
         $this->app->scoped(HistoryRecorder::class);
+
+        // Remember profile pictures and family addresses for one request only.
+        $this->app->scoped(MediaMemo::class);
+
+        $this->app->bind(VirusScanner::class, fn (): VirusScanner => config('media.scanner.enabled')
+            ? new ClamAvScanner((string) config('media.scanner.host'), (int) config('media.scanner.port'), (int) config('media.scanner.timeout'))
+            : new NullScanner);
     }
 
     /**

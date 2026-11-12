@@ -35,6 +35,8 @@ export type MemberSummary = {
     generation: number | null;
     visibility: 'family' | 'restricted' | 'private' | null;
     is_me: boolean;
+    /** Small profile picture, when there is one the viewer may see. */
+    photo_url: string | null;
     /** True when the viewer may not see this person: only a "Private relative" card is shown. */
     hidden: boolean;
 };
@@ -181,6 +183,16 @@ export type TimelineItem = {
     visibility: string | null;
     people: MemberSummary[];
     editable: boolean;
+    attachments: TimelineAttachment[];
+};
+
+export type TimelineAttachment = {
+    id: string;
+    type: 'photo' | 'document';
+    file_id: string;
+    title: string | null;
+    thumb_url: string;
+    url: string;
 };
 
 export type MemberNameItem = {
@@ -295,3 +307,68 @@ export type ChangeItem = {
 };
 
 export type ChangeModeValue = 'direct' | 'propose' | 'deny';
+
+// --- Media (photos, albums, documents) ---------------------------------------------
+
+type MediaCommon = {
+    id: string;
+    description: string | null;
+    visibility: string;
+    visibility_label: string;
+    /** `quarantined` while the file is being checked; `rejected` if it was refused. */
+    status: 'quarantined' | 'ready' | 'rejected';
+    rejection_reason: string | null;
+    filename: string | null;
+    size_bytes: number;
+    width: number | null;
+    height: number | null;
+    uploaded_by: string | null;
+    uploaded_at: string | null;
+    is_mine: boolean;
+    can: { update: boolean; delete: boolean };
+};
+
+export type PhotoItem = MediaCommon & {
+    caption: string | null;
+    taken: string | null;
+    taken_input: FuzzyDateValue;
+    taken_year: number | null;
+    album_id: string | null;
+    /** Null until the photo has passed its checks. */
+    urls: { thumb: string; display: string; original: string } | null;
+};
+
+export type AlbumItem = {
+    id: string;
+    title: string;
+    description: string | null;
+    count: number;
+    cover_url: string | null;
+    can: { update: boolean };
+};
+
+export type DocumentItem = MediaCommon & {
+    title: string | null;
+    category: string;
+    category_label: string;
+    issued: string | null;
+    issued_input: FuzzyDateValue;
+    page_count: number | null;
+    is_pdf: boolean;
+    downloadable: boolean;
+    urls: { thumb: string; pages: string[]; download: string | null } | null;
+};
+
+export type TimelineLinks = {
+    attached: { id: string; entry_id: string; title: string }[];
+    entries: { id: string; title: string; year: number | null }[];
+    can_attach: boolean;
+};
+
+export type StorageUsage = {
+    used: number;
+    quota: number;
+    photos: number;
+    documents: number;
+    deleted: number;
+};

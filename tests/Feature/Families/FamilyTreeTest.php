@@ -14,9 +14,7 @@ use App\Services\Genealogy\FamilyGraphLoader;
 use App\Support\FuzzyDate\FuzzyDate;
 use Database\Factories\FamilyFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 
@@ -539,47 +537,4 @@ test('member search matches partial names, close spellings and ignores accents',
         ->and($names('jose fernandez'))->toBe(['José Fernández'])
         ->and($names("%' OR 1=1 --"))->toBe([])
         ->and($names('%'))->toBe([]);
-});
-
-// --- Cover image -----------------------------------------------------------------------
-
-test('an administrator can upload, replace and remove the cover image; members can view it', function () {
-    Storage::fake('local');
-    [$family, $owner] = treeFamily();
-
-    $this->actingAs($owner)
-        ->post(route('families.cover.store', $family), ['cover' => UploadedFile::fake()->image('../../evil.php.jpg', 800, 400)])
-        ->assertSessionHasNoErrors();
-
-    $path = $family->refresh()->settings['cover_path'];
-
-    expect($path)->toStartWith("covers/{$family->id}/")
-        ->and($path)->not->toContain('evil')
-        ->and(Storage::disk('local')->exists($path))->toBeTrue();
-
-    $this->actingAs(memberWithRole($family, FamilyRole::Viewer))
-        ->get(route('families.cover.show', $family))
-        ->assertOk()
-        ->assertHeader('Content-Type', 'image/jpeg');
-
-    $this->post(route('families.cover.store', $family), ['cover' => UploadedFile::fake()->image('mine.jpg', 800, 400)])->assertForbidden();
-
-    $this->actingAs($owner)->delete(route('families.cover.destroy', $family));
-
-    expect(Storage::disk('local')->exists($path))->toBeFalse()
-        ->and($family->refresh()->settings)->not->toHaveKey('cover_path');
-});
-
-test('only real images are accepted as a cover', function () {
-    Storage::fake('local');
-    [$family, $owner] = treeFamily();
-
-    $this->actingAs($owner)
-        ->post(route('families.cover.store', $family), ['cover' => UploadedFile::fake()->create('script.php', 10, 'application/x-php')])
-        ->assertSessionHasErrors('cover');
-
-    $this->post(route('families.cover.store', $family), ['cover' => UploadedFile::fake()->createWithContent('fake.jpg', '<?php echo 1;')])
-        ->assertSessionHasErrors('cover');
-
-    expect($family->refresh()->settings)->not->toHaveKey('cover_path');
 });

@@ -11,6 +11,7 @@ import { TimelineList } from '@/components/timeline/timeline-list';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { tree } from '@/routes/families';
+import { show as showDocument } from '@/routes/families/documents';
 import {
     destroy as destroyMember,
     index as membersIndex,
@@ -18,17 +19,23 @@ import {
     show as showMember,
 } from '@/routes/families/members';
 import {
+    index as photosIndex,
+    show as showPhoto,
+} from '@/routes/families/photos';
+import {
     destroy as destroyRelationship,
     update as updateRelationship,
 } from '@/routes/families/relationships';
 import type {
     ChangeModeValue,
+    DocumentItem,
     FamilyRef,
     GenealogyOptions,
     MemberNameItem,
     MemberProfile,
     MemberSummary,
     Option,
+    PhotoItem,
     RelationshipInfo,
     Relatives,
     RelativeKind,
@@ -42,6 +49,8 @@ type Props = {
     names: MemberNameItem[];
     nameTypes: Option[];
     timeline: TimelineItem[];
+    photos: PhotoItem[];
+    documents: DocumentItem[];
     isRoot: boolean;
     linkedToMe: boolean;
     can: {
@@ -215,6 +224,8 @@ export default function MemberShow({
     names,
     nameTypes,
     timeline,
+    photos,
+    documents,
     isRoot,
     linkedToMe,
     can,
@@ -547,6 +558,89 @@ export default function MemberShow({
                     types={nameTypes}
                     canEdit={can.editNames}
                 />
+
+                {photos.length > 0 && (
+                    <section aria-labelledby="photos-heading">
+                        <div className="mb-3 flex items-baseline justify-between gap-2">
+                            <h2
+                                id="photos-heading"
+                                className="text-base font-medium"
+                            >
+                                Photos
+                            </h2>
+                            <Link
+                                href={photosIndex.url(family.slug, {
+                                    query: { person: member.id },
+                                })}
+                                className="text-sm underline underline-offset-4"
+                            >
+                                All photos of {member.name}
+                            </Link>
+                        </div>
+                        <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+                            {photos.map(
+                                (photo) =>
+                                    photo.urls && (
+                                        <li
+                                            key={photo.id}
+                                            className="aspect-square overflow-hidden rounded-lg border bg-muted"
+                                        >
+                                            <Link
+                                                href={showPhoto({
+                                                    family: family.slug,
+                                                    photo: photo.id,
+                                                })}
+                                            >
+                                                <img
+                                                    src={photo.urls.thumb}
+                                                    alt={
+                                                        photo.caption ??
+                                                        `Photo of ${member.name}`
+                                                    }
+                                                    loading="lazy"
+                                                    className="size-full object-cover"
+                                                />
+                                            </Link>
+                                        </li>
+                                    ),
+                            )}
+                        </ul>
+                    </section>
+                )}
+
+                {documents.length > 0 && (
+                    <section aria-labelledby="documents-heading">
+                        <h2
+                            id="documents-heading"
+                            className="mb-3 text-base font-medium"
+                        >
+                            Documents
+                        </h2>
+                        <ul className="grid gap-1">
+                            {documents.map((document) => (
+                                <li
+                                    key={document.id}
+                                    className="flex flex-wrap items-baseline gap-x-3 text-sm"
+                                >
+                                    <Link
+                                        href={showDocument({
+                                            family: family.slug,
+                                            document: document.id,
+                                        })}
+                                        className="font-medium underline underline-offset-2"
+                                    >
+                                        {document.title}
+                                    </Link>
+                                    <span className="text-xs text-muted-foreground">
+                                        {document.category_label}
+                                        {document.issued &&
+                                            ` · ${document.issued}`}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                )}
 
                 {timeline.length > 0 && (
                     <section aria-labelledby="life-heading">

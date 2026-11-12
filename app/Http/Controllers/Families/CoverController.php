@@ -2,77 +2,70 @@
 
 namespace App\Http\Controllers\Families;
 
+use App\Actions\Media\UploadMedia;
+use App\Enums\MediaStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Family;
+use App\Models\FamilyPhoto;
+use App\Models\User;
+use App\Services\Media\MediaLibrary;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * A family's cover image.
- *
- * Temporary: kept on the server's private disk and served only to members of the family.
- * It moves to object storage, with scanning and re-encoding, when the media pipeline exists.
+ * A family's cover image: one of its photos (`families.cover_photo_id`). An image uploaded
+ * here goes through the same safety checks as every photo and also appears in the gallery.
  */
 class CoverController extends Controller
 {
-    private const DISK = 'local';
-
-    private const TYPES = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'];
-
-    public function show(Family $family): StreamedResponse
+    public function show(Family $family, MediaLibrary $library): StreamedResponse
     {
         $this->authorize('view', $family);
 
-        $path = self::path($family);
+        $photo = self::photo($family);
+        abort_if($photo === null, 404);
 
-        abort_if($path === null || ! Storage::disk(self::DISK)->exists($path), 404);
-
-        return Storage::disk(self::DISK)->response($path, null, [
-            'Content-Type' => self::TYPES[Str::lower(pathinfo($path, PATHINFO_EXTENSION))] ?? 'application/octet-stream',
-            'Cache-Control' => 'private, max-age=3600',
-            'X-Content-Type-Options' => 'nosniff',
-        ]);
+        return PhotoController::image($library, $photo->keyFor('display'));
     }
 
-    public function store(Request $request, Family $family): RedirectResponse
+    public function store(Request $request, Family $family, UploadMedia $upload): RedirectResponse
     {
         $this->authorize('update', $family);
 
-        $request->validate([
-            'cover' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:min_width=200,min_height=100,max_width=8000,max_height=8000'],
-        ]);
+        $request->validate(['cover' => ['required', 'file']]);
 
         $file = $request->file('cover');
         abort_unless($file instanceof UploadedFile, 422);
 
-        // The stored name is never taken from the upload.
-        $extension = array_search($file->getMimeType(), self::TYPES, true) ?: 'jpg';
-        $path = $file->storeAs("covers/{$family->id}", Str::random(40).'.'.$extension, self::DISK);
+        /** @var User $user */
+        $user = $request->user();
 
-        abort_if($path === false, 500);
+        try {
+            $photo = $upload->handle($family, $user, $file, 'photo', function (FamilyPhoto $photo) use ($family): void {
+                $photo->caption = __('Cover of :family', ['family' => $family->name]);
+            });
+        } catch (DomainException $exception) {
+            throw ValidationException::withMessages(['cover' => $exception->getMessage()]);
+        }
 
-        $this->forget($family);
-        $family->forceFill(['settings' => [...$family->settings, 'cover_path' => $path]])->save();
+        $family->forceFill(['cover_photo_id' => $photo->id])->save();
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Cover image updated.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Cover image uploaded. It appears once it has been checked.')]);
 
         return back();
     }
 
+    /** Stops using the photo as the cover. The photo itself stays in the gallery. */
     public function destroy(Family $family): RedirectResponse
     {
         $this->authorize('update', $family);
 
-        $this->forget($family);
-
-        $settings = $family->settings;
-        unset($settings['cover_path']);
-        $family->forceFill(['settings' => $settings])->save();
+        $family->forceFill(['cover_photo_id' => null])->save();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Cover image removed.')]);
 
@@ -81,29 +74,25 @@ class CoverController extends Controller
 
     public static function url(Family $family): ?string
     {
-        $path = self::path($family);
+        $photo = self::photo($family);
 
-        return $path === null
+        return $photo === null
             ? null
-            : route('families.cover.show', ['family' => $family, 'v' => substr(hash('sha256', $path), 0, 8)]);
+            : route('families.cover.show', ['family' => $family, 'v' => substr($photo->id, -8)]);
     }
 
-    private static function path(Family $family): ?string
+    /** The cover, only if it is ready and something the whole family may see. */
+    private static function photo(Family $family): ?FamilyPhoto
     {
-        $path = $family->settings['cover_path'] ?? null;
-
-        // Only ever a path this controller generated for this family.
-        return is_string($path) && Str::startsWith($path, "covers/{$family->id}/") && ! Str::contains($path, '..')
-            ? $path
-            : null;
-    }
-
-    private function forget(Family $family): void
-    {
-        $path = self::path($family);
-
-        if ($path !== null) {
-            Storage::disk(self::DISK)->delete($path);
+        if ($family->cover_photo_id === null) {
+            return null;
         }
+
+        return FamilyPhoto::query()
+            ->inFamily($family)
+            ->whereKey($family->cover_photo_id)
+            ->where('status', MediaStatus::Ready->value)
+            ->where('visibility', 'family')
+            ->first();
     }
 }

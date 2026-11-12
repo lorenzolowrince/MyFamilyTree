@@ -25,6 +25,8 @@
         <env name="ARGON_MEMORY" value="1024"/>
         <env name="ARGON_TIME" value="1"/>
         <env name="FILESYSTEM_DISK" value="local"/>
+        <env name="MEDIA_DISK" value="local"/>
+        <env name="CLAMAV_ENABLED" value="false"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
         <env name="DB_DATABASE" value="testing"/>

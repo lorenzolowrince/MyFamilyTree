@@ -120,6 +120,24 @@ class Family extends Model
         return $this->hasMany(FamilyEvent::class);
     }
 
+    /** @return HasMany<FamilyPhoto, $this> */
+    public function photos(): HasMany
+    {
+        return $this->hasMany(FamilyPhoto::class);
+    }
+
+    /** @return HasMany<PhotoAlbum, $this> */
+    public function albums(): HasMany
+    {
+        return $this->hasMany(PhotoAlbum::class);
+    }
+
+    /** @return HasMany<FamilyDocument, $this> */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(FamilyDocument::class);
+    }
+
     /** @return BelongsTo<FamilyMember, $this> */
     public function rootMember(): BelongsTo
     {

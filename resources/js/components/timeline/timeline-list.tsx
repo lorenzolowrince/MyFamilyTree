@@ -119,6 +119,41 @@ export function TimelineList({
                                                         )}
                                                     </p>
                                                 )}
+                                            {item.attachments.length > 0 && (
+                                                <ul className="mt-2 flex flex-wrap gap-2">
+                                                    {item.attachments.map(
+                                                        (attachment) => (
+                                                            <li
+                                                                key={
+                                                                    attachment.id
+                                                                }
+                                                            >
+                                                                <Link
+                                                                    href={
+                                                                        attachment.url
+                                                                    }
+                                                                    className="block size-16 overflow-hidden rounded-md border bg-muted outline-none focus-visible:ring-[3px] focus-visible:ring-ring/60"
+                                                                >
+                                                                    <img
+                                                                        src={
+                                                                            attachment.thumb_url
+                                                                        }
+                                                                        alt={
+                                                                            attachment.title ??
+                                                                            (attachment.type ===
+                                                                            'photo'
+                                                                                ? 'Photo'
+                                                                                : 'Document')
+                                                                        }
+                                                                        loading="lazy"
+                                                                        className="size-full object-cover object-top"
+                                                                    />
+                                                                </Link>
+                                                            </li>
+                                                        ),
+                                                    )}
+                                                </ul>
+                                            )}
                                         </div>
                                         {item.editable && onEdit && (
                                             <Button

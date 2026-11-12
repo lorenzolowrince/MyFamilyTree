@@ -3,6 +3,7 @@
 namespace App\Services\Privacy;
 
 use App\Models\FamilyMember;
+use App\Services\Media\MediaPresenter;
 
 /**
  * The only way a person's data leaves the server. Each method returns exactly the fields the
@@ -10,6 +11,8 @@ use App\Models\FamilyMember;
  */
 class MemberPresenter
 {
+    public function __construct(private readonly MediaPresenter $media) {}
+
     /**
      * The card shown in the tree, lists and pickers.
      *
@@ -36,6 +39,7 @@ class MemberPresenter
             'generation' => $member->generation,
             'visibility' => $member->visibility->value,
             'is_me' => $viewer->isSelf($member),
+            'photo_url' => $this->media->avatarUrl($member, $viewer),
             'hidden' => false,
         ];
     }
@@ -61,6 +65,7 @@ class MemberPresenter
             'generation' => null,
             'visibility' => null,
             'is_me' => false,
+            'photo_url' => null,
             'hidden' => true,
         ];
     }

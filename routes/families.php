@@ -1,15 +1,19 @@
 <?php
 
 use App\Http\Controllers\Families\ActivityController;
+use App\Http\Controllers\Families\AlbumController;
 use App\Http\Controllers\Families\ChangeRequestController;
 use App\Http\Controllers\Families\CoverController;
+use App\Http\Controllers\Families\DocumentController;
 use App\Http\Controllers\Families\EventController;
 use App\Http\Controllers\Families\FamilyController;
 use App\Http\Controllers\Families\MemberController;
 use App\Http\Controllers\Families\MemberNameController;
 use App\Http\Controllers\Families\PeopleController;
+use App\Http\Controllers\Families\PhotoController;
 use App\Http\Controllers\Families\RelationshipController;
 use App\Http\Controllers\Families\RelativeController;
+use App\Http\Controllers\Families\TimelineAttachmentController;
 use App\Http\Controllers\Families\TimelineController;
 use App\Http\Controllers\Families\TreeController;
 use App\Http\Middleware\EnsureTwoFactorEnabled;
@@ -65,6 +69,33 @@ Route::middleware(['auth', 'verified', EnsureTwoFactorEnabled::class])->group(fu
             Route::patch('events/{event}', [EventController::class, 'update'])->whereUuid('event')->name('events.update');
             Route::delete('events/{event}', [EventController::class, 'destroy'])->whereUuid('event')->name('events.destroy');
             Route::post('events/{event}/timeline', [EventController::class, 'convert'])->whereUuid('event')->name('events.convert');
+
+            Route::post('timeline/{entry}/attachments', [TimelineAttachmentController::class, 'store'])->whereUuid('entry')->name('timeline.attachments.store');
+            Route::delete('timeline/{entry}/attachments/{attachment}', [TimelineAttachmentController::class, 'destroy'])->whereUuid(['entry', 'attachment'])->name('timeline.attachments.destroy');
+
+            // Photos and albums. Uploads are limited per person; files are checked before they appear.
+            Route::get('photos', [PhotoController::class, 'index'])->name('photos.index');
+            Route::post('photos', [PhotoController::class, 'store'])->middleware('throttle:60,10')->name('photos.store');
+            Route::get('photos/{photo}', [PhotoController::class, 'show'])->whereUuid('photo')->name('photos.show');
+            Route::patch('photos/{photo}', [PhotoController::class, 'update'])->whereUuid('photo')->name('photos.update');
+            Route::delete('photos/{photo}', [PhotoController::class, 'destroy'])->whereUuid('photo')->name('photos.destroy');
+            Route::get('photos/{photo}/{size}.jpg', [PhotoController::class, 'file'])->whereUuid('photo')->whereIn('size', ['thumb', 'display', 'original'])->name('photos.file');
+            Route::post('photos/{photo}/profile', [PhotoController::class, 'profile'])->whereUuid('photo')->name('photos.profile');
+            Route::post('photos/{photo}/cover', [PhotoController::class, 'cover'])->whereUuid('photo')->name('photos.cover');
+
+            Route::post('albums', [AlbumController::class, 'store'])->name('albums.store');
+            Route::patch('albums/{album}', [AlbumController::class, 'update'])->whereUuid('album')->name('albums.update');
+            Route::delete('albums/{album}', [AlbumController::class, 'destroy'])->whereUuid('album')->name('albums.destroy');
+
+            // Documents: read as page images; the file itself only ever as a download.
+            Route::get('documents', [DocumentController::class, 'index'])->name('documents.index');
+            Route::post('documents', [DocumentController::class, 'store'])->middleware('throttle:60,10')->name('documents.store');
+            Route::get('documents/{document}', [DocumentController::class, 'show'])->whereUuid('document')->name('documents.show');
+            Route::patch('documents/{document}', [DocumentController::class, 'update'])->whereUuid('document')->name('documents.update');
+            Route::delete('documents/{document}', [DocumentController::class, 'destroy'])->whereUuid('document')->name('documents.destroy');
+            Route::get('documents/{document}/thumb.jpg', [DocumentController::class, 'thumb'])->whereUuid('document')->name('documents.thumb');
+            Route::get('documents/{document}/pages/{page}.jpg', [DocumentController::class, 'page'])->whereUuid('document')->whereNumber('page')->name('documents.page');
+            Route::get('documents/{document}/download', [DocumentController::class, 'download'])->whereUuid('document')->middleware('throttle:60,1')->name('documents.download');
 
             // People with access, invitations, roles.
             Route::get('people', [PeopleController::class, 'index'])->name('people.index');

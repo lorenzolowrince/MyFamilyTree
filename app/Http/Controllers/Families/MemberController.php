@@ -9,7 +9,9 @@ use App\Enums\NameType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Families\MemberRequest;
 use App\Models\Family;
+use App\Models\FamilyDocument;
 use App\Models\FamilyMember;
+use App\Models\FamilyPhoto;
 use App\Models\MemberName;
 use App\Models\User;
 use App\Services\Collaboration\ChangeMode;
@@ -17,6 +19,7 @@ use App\Services\Collaboration\ChangeRequests;
 use App\Services\Genealogy\DuplicateDetector;
 use App\Services\Genealogy\RelativesPresenter;
 use App\Services\History\TimelineBuilder;
+use App\Services\Media\MediaPresenter;
 use App\Services\Privacy\MemberPresenter;
 use App\Services\Privacy\MemberPrivacy;
 use App\Support\FormOptions;
@@ -102,7 +105,7 @@ class MemberController extends Controller
         return response()->json(['members' => $matches]);
     }
 
-    public function show(Request $request, Family $family, FamilyMember $member, RelativesPresenter $relatives, TimelineBuilder $timeline): Response
+    public function show(Request $request, Family $family, FamilyMember $member, RelativesPresenter $relatives, TimelineBuilder $timeline, MediaPresenter $media): Response
     {
         $this->authorize('view', $member);
 
@@ -125,6 +128,22 @@ class MemberController extends Controller
             ])->all(),
             'nameTypes' => array_map(fn (NameType $case): array => ['value' => $case->value, 'label' => $case->label()], NameType::cases()),
             'timeline' => $timeline->build($family, $viewer, ['member' => $member->id])['items'],
+            'photos' => $member->photos()
+                ->visibleTo($user, $viewer->visibleLevels())
+                ->where('status', 'ready')
+                ->latest()
+                ->limit(12)
+                ->get()
+                ->map(fn (FamilyPhoto $photo): array => $media->photo($photo, $viewer, $user))
+                ->all(),
+            'documents' => $member->documents()
+                ->visibleTo($user, $viewer->visibleLevels())
+                ->where('status', 'ready')
+                ->latest()
+                ->limit(12)
+                ->get()
+                ->map(fn (FamilyDocument $document): array => $media->document($document, $viewer, $user))
+                ->all(),
             'isRoot' => $family->root_member_id === $member->id,
             'linkedToMe' => $viewer->isSelf($member),
             'iAmLinked' => $viewer->linkedMemberId !== null,

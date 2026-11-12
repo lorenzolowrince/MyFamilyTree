@@ -10,7 +10,10 @@ function initials(name: string): string {
     return (first + last).toUpperCase();
 }
 
-/** Initials in a circle. Colour is decoration only; gender is never conveyed by colour alone. */
+/**
+ * The person's profile picture, or their initials in a circle. Colour is decoration only;
+ * gender is never conveyed by colour alone. Decorative: the name is always written next to it.
+ */
 export function MemberAvatar({
     member,
     className,
@@ -30,7 +33,7 @@ export function MemberAvatar({
         <span
             aria-hidden="true"
             className={cn(
-                'flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+                'flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold',
                 tone,
                 !member.living && !member.hidden && 'grayscale-[0.6]',
                 className,
@@ -38,6 +41,13 @@ export function MemberAvatar({
         >
             {member.hidden ? (
                 <EyeOff className="size-4" />
+            ) : member.photo_url ? (
+                <img
+                    src={member.photo_url}
+                    alt=""
+                    loading="lazy"
+                    className="size-full object-cover"
+                />
             ) : member.is_placeholder ? (
                 <HelpCircle className="size-4" />
             ) : (

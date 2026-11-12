@@ -8,6 +8,7 @@ use App\Models\Family;
 use App\Models\FamilyMember;
 use App\Models\FamilyRelationship;
 use App\Models\TimelineEntry;
+use App\Services\Media\MediaPresenter;
 use App\Services\Privacy\MemberPresenter;
 use App\Services\Privacy\MemberPrivacy;
 use App\Services\Privacy\MemberViewer;
@@ -19,7 +20,7 @@ use Illuminate\Database\Eloquent\Builder;
  * straight from the people and relationship tables. Everything passes through the viewer's
  * privacy rules, so a living person's birth date or a hidden person never appears here.
  *
- * @phpstan-type Item array{id: string, kind: string, category: string, title: string, description: string|null, date: array<string, mixed>, sort: string, year: int|null, place: string|null, visibility: string|null, people: list<array<string, mixed>>, editable: bool}
+ * @phpstan-type Item array{id: string, kind: string, category: string, title: string, description: string|null, date: array<string, mixed>, sort: string, year: int|null, place: string|null, visibility: string|null, people: list<array<string, mixed>>, editable: bool, attachments: list<array<string, mixed>>}
  */
 class TimelineBuilder
 {
@@ -30,6 +31,7 @@ class TimelineBuilder
     public function __construct(
         private readonly MemberPrivacy $privacy,
         private readonly MemberPresenter $presenter,
+        private readonly MediaPresenter $media,
     ) {}
 
     /**
@@ -77,13 +79,17 @@ class TimelineBuilder
     {
         $editable = $viewer->has(FamilyPermission::TimelineCreate);
 
-        return array_values(TimelineEntry::query()
+        $entries = TimelineEntry::query()
             ->where('family_id', $family->id)
             ->whereIn('visibility', $viewer->visibleLevels())
             ->when($category !== null, fn (Builder $query) => $query->where('category', $category))
             ->when($memberId !== null, fn (Builder $query) => $query->whereHas('participants', fn (Builder $query) => $query->where('family_members.id', $memberId)))
             ->with(['participants', 'place'])
-            ->get()
+            ->get();
+
+        $attachments = $this->media->timelineAttachments($family->id, array_values($entries->modelKeys()), $viewer);
+
+        return array_values($entries
             ->map(fn (TimelineEntry $entry): array => $this->item(
                 id: $entry->id,
                 kind: 'entry',
@@ -99,6 +105,7 @@ class TimelineBuilder
                     ->map(fn (FamilyMember $member): array => $this->presenter->summary($member, $viewer))
                     ->all()),
                 editable: $editable,
+                attachments: $attachments[$entry->id] ?? [],
             ))
             ->all());
     }
@@ -179,9 +186,10 @@ class TimelineBuilder
 
     /**
      * @param  list<array<string, mixed>>  $people
+     * @param  list<array<string, mixed>>  $attachments
      * @return Item
      */
-    private function item(string $id, string $kind, string $category, string $title, ?string $description, FuzzyDate $date, ?string $place, ?string $visibility, array $people, bool $editable): array
+    private function item(string $id, string $kind, string $category, string $title, ?string $description, FuzzyDate $date, ?string $place, ?string $visibility, array $people, bool $editable, array $attachments = []): array
     {
         return [
             'id' => $id,
@@ -196,6 +204,7 @@ class TimelineBuilder
             'visibility' => $visibility,
             'people' => $people,
             'editable' => $editable,
+            'attachments' => $attachments,
         ];
     }
 }

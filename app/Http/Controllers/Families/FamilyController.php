@@ -10,6 +10,7 @@ use App\Models\Family;
 use App\Models\User;
 use App\Services\Audit\HistoryRecorder;
 use App\Services\Authorization\FamilyAccess;
+use App\Services\Media\MediaLibrary;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -73,6 +74,8 @@ class FamilyController extends Controller
                 'name' => $family->name,
                 'description' => $family->description,
                 'cover_url' => CoverController::url($family),
+                'storage' => app(MediaLibrary::class)->usage($family),
+                'purge_after_days' => (int) config('media.purge_after_days'),
                 'editors_need_approval' => (bool) ($family->settings['approval']['editors_need_approval'] ?? false),
                 'contributors_publish_directly' => (bool) ($family->settings['approval']['contributors_publish_directly'] ?? false),
             ],

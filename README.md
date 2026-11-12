@@ -20,7 +20,7 @@ A family heritage platform for documenting ancestry, managing family relationshi
 
 ## Requirements
 
-- **Docker Desktop** (WSL 2 backend), which runs PHP, PostgreSQL, Redis, Mailpit and RustFS.
+- **Docker Desktop** (WSL 2 backend), which runs PHP, PostgreSQL, Redis, Mailpit, RustFS and the ClamAV virus scanner (allow about 2 GB of memory for ClamAV; its first start downloads virus definitions and takes a few minutes).
 - Git.
 - Optional, for running tools outside Docker: PHP 8.4+ with `pdo_pgsql`, Composer 2, Node 24.
 

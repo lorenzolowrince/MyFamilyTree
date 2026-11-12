@@ -7,10 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { tree, update } from '@/routes/families';
+import { fileSize } from '@/components/media/upload-dialog';
 import {
     destroy as destroyCover,
     store as storeCover,
 } from '@/routes/families/cover';
+import type { StorageUsage } from '@/types';
 
 type Props = {
     family: {
@@ -18,6 +20,8 @@ type Props = {
         name: string;
         description: string | null;
         cover_url: string | null;
+        storage: StorageUsage;
+        purge_after_days: number;
         editors_need_approval: boolean;
         contributors_publish_directly: boolean;
     };
@@ -178,8 +182,10 @@ export default function FamilySettings({ family }: Props) {
                         Cover image
                     </h2>
                     <p className="mb-4 text-sm text-muted-foreground">
-                        Shown on the family card. JPEG, PNG or WebP, up to 5 MB.
-                        Only members of this family can see it.
+                        Shown on the family card. JPEG, PNG, WebP or HEIC. It is
+                        checked like every photo, appears in the gallery, and
+                        only members of this family can see it. You can also
+                        choose any photo in the gallery as the cover.
                     </p>
 
                     {family.cover_url && (
@@ -195,7 +201,7 @@ export default function FamilySettings({ family }: Props) {
                             ref={fileInput}
                             id="cover"
                             type="file"
-                            accept="image/jpeg,image/png,image/webp"
+                            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
                             className="sr-only"
                             onChange={(event) =>
                                 upload(event.target.files?.[0])
@@ -229,6 +235,55 @@ export default function FamilySettings({ family }: Props) {
                         )}
                     </div>
                     <InputError message={coverError} className="mt-2" />
+                </section>
+
+                <section aria-labelledby="storage-heading">
+                    <h2 id="storage-heading" className="text-base font-medium">
+                        Storage
+                    </h2>
+                    <p className="mb-3 text-sm text-muted-foreground">
+                        {fileSize(family.storage.used)} of{' '}
+                        {fileSize(family.storage.quota)} used by photos and
+                        documents.
+                    </p>
+                    <div
+                        role="meter"
+                        aria-label="Storage used"
+                        aria-valuemin={0}
+                        aria-valuemax={family.storage.quota}
+                        aria-valuenow={family.storage.used}
+                        aria-valuetext={`${fileSize(family.storage.used)} of ${fileSize(family.storage.quota)}`}
+                        className="h-2.5 overflow-hidden rounded-full bg-muted"
+                    >
+                        <div
+                            className="h-full rounded-full bg-primary"
+                            style={{
+                                width: `${Math.min(100, family.storage.quota === 0 ? 100 : (family.storage.used / family.storage.quota) * 100)}%`,
+                            }}
+                        />
+                    </div>
+                    <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
+                        <dt className="text-muted-foreground">Photos</dt>
+                        <dd className="tabular-nums">
+                            {fileSize(family.storage.photos)}
+                        </dd>
+                        <dt className="text-muted-foreground">Documents</dt>
+                        <dd className="tabular-nums">
+                            {fileSize(family.storage.documents)}
+                        </dd>
+                        {family.storage.deleted > 0 && (
+                            <>
+                                <dt className="text-muted-foreground">
+                                    Recently removed
+                                </dt>
+                                <dd className="tabular-nums">
+                                    {fileSize(family.storage.deleted)} (freed{' '}
+                                    {family.purge_after_days} days after
+                                    removal)
+                                </dd>
+                            </>
+                        )}
+                    </dl>
                 </section>
             </div>
         </>

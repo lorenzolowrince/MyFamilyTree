@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
@@ -178,5 +179,25 @@ class FamilyMember extends Model implements HasHistory
     public function historyVisibility(): string
     {
         return $this->visibility->value;
+    }
+
+    /**
+     * Photos this person is tagged in.
+     *
+     * @return BelongsToMany<FamilyPhoto, $this>
+     */
+    public function photos(): BelongsToMany
+    {
+        return $this->belongsToMany(FamilyPhoto::class, 'member_photos', 'member_id', 'photo_id');
+    }
+
+    /**
+     * Documents about this person.
+     *
+     * @return BelongsToMany<FamilyDocument, $this>
+     */
+    public function documents(): BelongsToMany
+    {
+        return $this->belongsToMany(FamilyDocument::class, 'member_documents', 'member_id', 'document_id');
     }
 }
