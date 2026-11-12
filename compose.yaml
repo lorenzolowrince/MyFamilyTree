@@ -154,6 +154,19 @@ services:
             retries: 3
             start_period: 600s
         restart: unless-stopped
+    # Chromium for PDF reports (Gotenberg). Not published to the host. It only ever prints
+    # HTML the application hands it: JavaScript is off and it may load nothing from outside.
+    gotenberg:
+        image: 'gotenberg/gotenberg:8'
+        command:
+            - gotenberg
+            - '--chromium-disable-javascript=true'
+            - '--chromium-allow-list=file:///tmp/.*'
+            - '--libreoffice-disable-routes=true'
+            - '--api-timeout=120s'
+        networks:
+            - sail
+        restart: unless-stopped
 networks:
     sail:
         driver: bridge

@@ -15,6 +15,7 @@ use App\Http\Controllers\Families\PhotoController;
 use App\Http\Controllers\Families\RelationshipController;
 use App\Http\Controllers\Families\RelationshipFinderController;
 use App\Http\Controllers\Families\RelativeController;
+use App\Http\Controllers\Families\ReportController;
 use App\Http\Controllers\Families\TimelineAttachmentController;
 use App\Http\Controllers\Families\TimelineController;
 use App\Http\Controllers\Families\TreeController;
@@ -125,6 +126,12 @@ Route::middleware(['auth', 'verified', EnsureTwoFactorEnabled::class])->group(fu
             Route::get('gedcom/imports/{import}', [GedcomController::class, 'show'])->whereUuid('import')->name('gedcom.show');
             Route::post('gedcom/imports/{import}/confirm', [GedcomController::class, 'confirm'])->whereUuid('import')->name('gedcom.confirm');
             Route::delete('gedcom/imports/{import}', [GedcomController::class, 'cancel'])->whereUuid('import')->name('gedcom.cancel');
+
+            // PDF reports: made in the background, downloadable by the person who asked.
+            Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+            Route::post('reports', [ReportController::class, 'store'])->middleware('throttle:10,60')->name('reports.store');
+            Route::get('reports/{report}/download', [ReportController::class, 'download'])->whereUuid('report')->name('reports.download');
+            Route::delete('reports/{report}', [ReportController::class, 'destroy'])->whereUuid('report')->name('reports.destroy');
 
             Route::get('relationship-finder', [RelationshipFinderController::class, 'show'])->middleware('throttle:60,1')->name('relationships.finder');
 

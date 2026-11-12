@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,7 +22,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $storage_key
  * @property int|null $size_bytes
  * @property string|null $error
- * @property Carbon $expires_at
+ * @property CarbonImmutable $expires_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read User|null $requester

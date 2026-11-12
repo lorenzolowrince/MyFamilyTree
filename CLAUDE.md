@@ -11,10 +11,10 @@ Never restart, rebuild or rewrite working code. Read the relevant code before ch
 
 ## 1. Hybrid model strategy
 
-| Model                                    | Use it for                                                                                                                                                                                                                                                                                                 |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Claude Opus 5.5**: primary, default    | Routine implementation within the established architecture: backend (Laravel/PHP), frontend (React/TS), PostgreSQL work, routes and controllers, UI, the PWA, feature work, routine debugging and bug fixing, tests, optimisation, routine refactoring, documentation, deployment preparation.             |
-| **Claude Fable 5.2**: specialist         | Architecture assessment and major architectural changes, database design and complex relationships, authentication and authorisation design, security and threat assessment, privacy and data protection, complex root-cause debugging, performance and scalability, major refactoring decisions, critical code reviews, choosing between alternative technical solutions. |
+| Model                                 | Use it for                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Claude Opus 5.5**: primary, default | Routine implementation within the established architecture: backend (Laravel/PHP), frontend (React/TS), PostgreSQL work, routes and controllers, UI, the PWA, feature work, routine debugging and bug fixing, tests, optimisation, routine refactoring, documentation, deployment preparation.                                                                             |
+| **Claude Fable 5.2**: specialist      | Architecture assessment and major architectural changes, database design and complex relationships, authentication and authorisation design, security and threat assessment, privacy and data protection, complex root-cause debugging, performance and scalability, major refactoring decisions, critical code reviews, choosing between alternative technical solutions. |
 
 At the start of every significant task, state which model fits it.
 
@@ -48,7 +48,7 @@ Where things live:
 - **Actions** (`app/Actions`) hold business logic once; controllers and imports call them.
 - **Policies** authorise every request. Outsiders to a family get **404**; members without the permission get **403**.
 - **Presenters** (`MemberPresenter`, `MediaPresenter`) are the only way personal data leaves the server. Every list, tree, search, report and export goes through `MemberPrivacy`/`MemberViewer`.
-- **Shape changes to the tree** go through `GraphChange` (one change at a time per family). Relationship rules are enforced in PHP *and* by database triggers.
+- **Shape changes to the tree** go through `GraphChange` (one change at a time per family). Relationship rules are enforced in PHP _and_ by database triggers.
 - **History:** models with `RecordsHistory` write the append-only `audit_logs` table (protected by a trigger) and `activity_logs`.
 - **Queued work:** slow jobs use the `media`, `imports` and `reports` queues, which have their own Horizon supervisor.
 - **Contributor and Viewer edits** become `change_requests` (via `ChangeMode`/`ChangeRequests`), and approval runs the same Action a direct edit would.
@@ -59,9 +59,9 @@ Where things live:
 2. Keep changes to the task. Don't refactor neighbouring code without a reason.
 3. Review any new dependency (need, maintenance, licence, security) before installing it. Prefer what is already in `composer.json`/`package.json`.
 4. Protect data integrity:
-   - Migrations are additive and backwards-compatible.
-   - Never drop or rewrite user data without approval.
-   - Keep the database constraints and triggers.
+    - Migrations are additive and backwards-compatible.
+    - Never drop or rewrite user data without approval.
+    - Keep the database constraints and triggers.
 5. **Major architectural changes need the developer's approval first.** That covers new services or containers, a new storage or auth approach, schema redesigns and replacing libraries.
 6. Record significant decisions in the current phase's ADR (`docs/adr/`) and differences from the plan in that ADR's "Differences" table.
 
@@ -83,10 +83,10 @@ The app holds personal information about whole families, including living people
 - No raw HTML from users. React escapes by default, and Blade report templates use `{{ }}`.
 - Living-person privacy: Contributors and Viewers do not see living people's exact dates, places or notes. Filters and searches must not reveal them either.
 - Files:
-  - Detect the type from content.
-  - Store under a server-generated key in quarantine, scan with ClamAV, re-encode, and strip metadata (GPS) before serving.
-  - Serve only `ready` files, after a permission check.
-  - Downloads use `Content-Disposition: attachment` with a sandbox policy.
+    - Detect the type from content.
+    - Store under a server-generated key in quarantine, scan with ClamAV, re-encode, and strip metadata (GPS) before serving.
+    - Serve only `ready` files, after a permission check.
+    - Downloads use `Content-Disposition: attachment` with a sandbox policy.
 - Secrets never reach logs or the audit log (`HistoryRecorder::IGNORED`). Store hashes, not tokens.
 - Downloads of personal data (documents, GEDCOM, reports) are written to the audit log.
 
@@ -97,13 +97,13 @@ Do not call a feature done because the code exists. Verify it.
 - Run the relevant tests, then the full suite before every commit:
   `docker compose exec -T laravel.test php artisan test --compact`
 - Run these before committing:
-  - in the container: `vendor/bin/pint --dirty` and `vendor/bin/phpstan analyse --memory-limit=1G` (level 7, must be clean);
-  - on the host: `npm run check:fix` and `npm run types:check`.
+    - in the container: `vendor/bin/pint --dirty` and `vendor/bin/phpstan analyse --memory-limit=1G` (level 7, must be clean);
+    - on the host: `npm run check:fix` and `npm run types:check`.
 - Run `npm run build` before running tests that render a **new** Inertia page. Without it the test stalls for minutes instead of failing.
 - Every new route gets tests for:
-  - outsiders (404);
-  - each role (403/allowed);
-  - privacy: hidden people stay hidden.
+    - outsiders (404);
+    - each role (403/allowed);
+    - privacy: hidden people stay hidden.
 - After UI changes, check the real page in a browser (headless Edge screenshots work) in light and dark mode and at phone width.
 - After changing code that queued jobs run, restart Horizon (`php artisan horizon:terminate`, then `docker compose restart horizon`).
 

@@ -17,6 +17,7 @@ import { index as eventsIndex } from '@/routes/families/events';
 import { index as membersIndex } from '@/routes/families/members';
 import { index as peopleIndex } from '@/routes/families/people';
 import { index as photosIndex } from '@/routes/families/photos';
+import { index as reportsIndex } from '@/routes/families/reports';
 import { index as timelineIndex } from '@/routes/families/timeline';
 import { edit as editProfile } from '@/routes/profile';
 import type { CurrentFamily, NavItem } from '@/types';
@@ -65,7 +66,11 @@ export function mainNavItems(family: CurrentFamily | null): NavItem[] {
             href: family ? peopleIndex(family.slug) : familiesIndex(),
             icon: MailPlus,
         },
-        { title: 'Reports', icon: Printer, availableInPhase: 8 },
+        {
+            title: 'Reports',
+            href: family ? reportsIndex(family.slug) : familiesIndex(),
+            icon: Printer,
+        },
         { title: 'Settings', href: editProfile(), icon: Settings },
     ];
 }

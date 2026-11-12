@@ -16,3 +16,6 @@ Schedule::command('auth:clear-resets')->dailyAt('03:30');
 
 // Erase photos and documents deleted more than 30 days ago and release their storage.
 Schedule::command('media:purge')->dailyAt('03:40')->withoutOverlapping();
+
+// Delete report files that have expired and GEDCOM uploads nobody confirmed.
+Schedule::command('reports:purge')->dailyAt('03:50')->withoutOverlapping();

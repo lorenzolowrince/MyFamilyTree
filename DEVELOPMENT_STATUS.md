@@ -4,24 +4,24 @@ Last updated: 2026-11-12. Rules for working on the project are in [CLAUDE.md](CL
 
 ## Overall progress
 
-**Stage:** Phase 8 of 10, built locally in Docker. The staging VPS has not been bought yet, so nothing is deployed. The developer has asked for phases 8–10 to be built back to back, then tested together.
+**Stage:** Phases 1–8 done; Phase 9 (PWA) is next. Everything is built locally in Docker. The staging VPS has not been bought yet, so nothing is deployed. The developer has asked for phases 8–10 to be built back to back, then tested together.
 
-| Phase                                  | State                                    | Branch                             | Pushed |
-| -------------------------------------- | ---------------------------------------- | ---------------------------------- | ------ |
-| 1 Architecture                         | Done                                     | `main` (docs)                      | Yes    |
-| 2 Foundation                           | Done                                     | `feature/phase-2-foundation`       | Yes    |
-| 3 Auth & users                         | Done                                     | `feature/phase-3-auth-users`       | Yes    |
-| 4 Family tree core                     | Done                                     | `feature/phase-4-family-tree`      | Yes    |
-| 5 Profiles & history                   | Done                                     | `feature/phase-5-profiles-history` | Yes    |
-| 6 Collaboration                        | Done                                     | `feature/phase-6-collaboration`    | Yes    |
-| 7 Media & documents                    | Done                                     | `feature/phase-7-media`            | Yes    |
-| 8 Reports, GEDCOM, relationship finder | **In progress** (2 of 3 parts committed) | `feature/phase-8-reports-gedcom`   | No     |
-| 9 PWA                                  | Not started                              |                                    |        |
-| 10 Hardening & launch                  | Not started (needs the VPS)              |                                    |        |
+| Phase                                  | State                       | Branch                             | Pushed |
+| -------------------------------------- | --------------------------- | ---------------------------------- | ------ |
+| 1 Architecture                         | Done                        | `main` (docs)                      | Yes    |
+| 2 Foundation                           | Done                        | `feature/phase-2-foundation`       | Yes    |
+| 3 Auth & users                         | Done                        | `feature/phase-3-auth-users`       | Yes    |
+| 4 Family tree core                     | Done                        | `feature/phase-4-family-tree`      | Yes    |
+| 5 Profiles & history                   | Done                        | `feature/phase-5-profiles-history` | Yes    |
+| 6 Collaboration                        | Done                        | `feature/phase-6-collaboration`    | Yes    |
+| 7 Media & documents                    | Done                        | `feature/phase-7-media`            | Yes    |
+| 8 Reports, GEDCOM, relationship finder | Done                        | `feature/phase-8-reports-gedcom`   | Yes    |
+| 9 PWA                                  | Not started                 |                                    |        |
+| 10 Hardening & launch                  | Not started (needs the VPS) |                                    |        |
 
 The branches are stacked: each one starts from the previous phase. No pull requests have been opened yet.
 
-**Last full test run:** 359 passed, 1 skipped (HEIC), on commit `deca2a7`.
+**Last full test run:** 373 passed, 1 skipped (HEIC), at the end of Phase 8.
 
 ## Completed modules
 
@@ -53,37 +53,20 @@ The branches are stacked: each one starts from the previous phase. No pull reque
     - documents, with a view-only option;
     - timeline attachments;
     - storage allowance, with a 30-day purge of deleted files.
-- **Phase 8 so far (committed):**
+- **Phase 8** (see [ADR 0007](docs/adr/0007-phase-8-reports-gedcom-finder.md)):
     - relationship calculator and finder (half, adoptive and step relationships, cousins with degree and removal, more than one answer for cousin marriages, in-laws);
     - advanced member search that respects privacy;
-    - GEDCOM 7 export and import, with a preview, duplicate matching and merge-without-overwrite. Exporting a tree and importing it again reproduces the same tree.
+    - GEDCOM 7 export and import, with a preview, duplicate matching and merge-without-overwrite. Exporting a tree and importing it again reproduces the same tree;
+    - PDF reports (tree chart, descendants, ancestors, individual summary, directory, timeline), printed by Chromium in the Gotenberg container. Built with the requester's privacy, downloadable only by them, deleted after 7 days.
 
 ## In progress
 
-**Phase 8, part 3: PDF reports.** The code is written but not committed or verified.
+Nothing. Phase 8 is finished.
 
-- New files:
-    - `app/Services/Reports/` (`HtmlToPdf`, `ReportBuilder`, `TreeChart`)
-    - `app/Jobs/GenerateReport.php`
-    - `app/Http/Controllers/Families/ReportController.php`
-    - `app/Console/Commands/PurgeExpiredReports.php`
-    - `config/reports.php`
-    - `resources/views/reports/*` (six report types)
-    - `resources/js/pages/reports/index.tsx`
-- Changed files:
-    - `compose.yaml` (new `gotenberg` service)
-    - `.env.example` (`GOTENBERG_URL`)
-    - `routes/families.php`
-    - `routes/console.php` (nightly `reports:purge`)
-    - `resources/js/lib/navigation.ts`
-- The `report_exports` and `gedcom_imports` tables are already migrated (part 2).
-- **Left to do:**
-    1. Fix 5 PHPStan findings in `ReportController` (`find()` return type; `expires_at` needs a `CarbonImmutable` property type) and in `TreeChart` (a cast).
-    2. Build the frontend; lint and type-check it.
-    3. Write `tests/Feature/Families/ReportTest.php`: permissions per role; privacy (a hidden person shows as "Private relative"; living dates are left out for Viewers and Contributors); a report can only be downloaded by the person who asked for it; expiry and purge; a real PDF from Gotenberg.
-    4. Look at the generated PDFs.
-    5. Write ADR 0007 for Phase 8.
-    6. Commit, then push the Phase 8 branch.
+**Next:**
+
+1. A privacy and security review of Phase 8 with **Fable 5.2**. GEDCOM files, reports and the relationship finder are new ways for family data to leave the app.
+2. Phase 9 (PWA) with **Opus 5.5**.
 
 ## Pending (by phase)
 
@@ -133,4 +116,5 @@ The branches are stacked: each one starts from the previous phase. No pull reque
 
 ## Latest activity
 
+- 2026-11-12: Phase 8 finished (PDF reports with Chromium/Gotenberg; ADR 0007) and pushed. `CLAUDE.md` is now tracked in Git.
 - 2026-11-12: Phases 4–7 pushed. Phase 8 parts 1 (finder and search) and 2 (GEDCOM) committed; part 3 (PDF reports) in progress. `CLAUDE.md` and this file created.
