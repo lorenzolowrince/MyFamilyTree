@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\FamilyRole;
 use App\Enums\MembershipStatus;
+use App\Enums\PushTopic;
 use App\Enums\UserStatus;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -20,6 +21,7 @@ use Illuminate\Support\Carbon;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 
 /**
  * @property string $id
@@ -41,13 +43,14 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
+ * @property list<string>|null $push_topics Null means every topic.
  */
 #[Fillable(['name', 'email', 'password', 'locale', 'timezone'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasUuids, Notifiable, PasskeyAuthenticatable, SoftDeletes, TwoFactorAuthenticatable;
+    use HasFactory, HasPushSubscriptions, HasUuids, Notifiable, PasskeyAuthenticatable, SoftDeletes, TwoFactorAuthenticatable;
 
     /** Days between asking for account deletion and the account being erased. */
     public const DELETION_GRACE_DAYS = 14;
@@ -77,7 +80,33 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'two_factor_confirmed_at' => 'datetime',
             'last_login_at' => 'datetime',
             'deletion_scheduled_at' => 'datetime',
+            'push_topics' => 'array',
         ];
+    }
+
+    /**
+     * The kinds of push notification this person wants. Push is only sent to devices they
+     * turned it on for (Settings → Notifications).
+     *
+     * @return list<PushTopic>
+     */
+    public function pushTopics(): array
+    {
+        if ($this->push_topics === null) {
+            return PushTopic::cases();
+        }
+
+        return array_values(array_filter(array_map(
+            fn (string $value): ?PushTopic => PushTopic::tryFrom($value),
+            $this->push_topics,
+        )));
+    }
+
+    public function wantsPush(PushTopic $topic): bool
+    {
+        return $this->status === UserStatus::Active
+            && in_array($topic, $this->pushTopics(), true)
+            && $this->pushSubscriptions()->exists();
     }
 
     /** @return HasMany<SocialAccount, $this> */

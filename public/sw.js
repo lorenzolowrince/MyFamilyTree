@@ -11,7 +11,7 @@
  *
  * Change VERSION when the list of static files changes.
  */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const STATIC_CACHE = `mft-static-${VERSION}`;
 const ASSET_CACHE = 'mft-assets';
 const OFFLINE_URL = '/offline.html';
@@ -88,6 +88,83 @@ self.addEventListener('fetch', (event) => {
 
     // Everything else (Inertia visits, JSON, media, downloads) goes to the network untouched.
 });
+
+/*
+ * Push notifications (Settings → Notifications). The message is encrypted for this browser
+ * by the server (WebPushMessage::toArray: title, body, tag, data.url). Only links inside
+ * this app are opened.
+ */
+self.addEventListener('push', (event) => {
+    let message = {};
+
+    try {
+        message = event.data ? event.data.json() : {};
+    } catch {
+        message = {};
+    }
+
+    const title =
+        typeof message.title === 'string' ? message.title : 'My Family Tree';
+
+    event.waitUntil(
+        self.registration.showNotification(title, {
+            body: typeof message.body === 'string' ? message.body : '',
+            icon: '/icons/icon-192.png',
+            badge: '/icons/icon-maskable-192.png',
+            tag: typeof message.tag === 'string' ? message.tag : undefined,
+            data: { url: sameOriginPath(message.data && message.data.url) },
+        }),
+    );
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+
+    const target = new URL(
+        sameOriginPath(event.notification.data && event.notification.data.url),
+        self.location.origin,
+    ).href;
+
+    event.waitUntil(
+        (async () => {
+            const windows = await self.clients.matchAll({
+                type: 'window',
+                includeUncontrolled: true,
+            });
+
+            for (const client of windows) {
+                if ('focus' in client) {
+                    await client.focus();
+
+                    if ('navigate' in client) {
+                        await client.navigate(target);
+                    }
+
+                    return;
+                }
+            }
+
+            await self.clients.openWindow(target);
+        })(),
+    );
+});
+
+/** Only links inside this app are opened; anything else goes to the dashboard. */
+function sameOriginPath(value) {
+    if (typeof value !== 'string') {
+        return '/dashboard';
+    }
+
+    try {
+        const url = new URL(value, self.location.origin);
+
+        return url.origin === self.location.origin
+            ? url.pathname + url.search
+            : '/dashboard';
+    } catch {
+        return '/dashboard';
+    }
+}
 
 /** Pages always come from the network; only when it cannot be reached is the offline page shown. */
 async function navigate(event) {

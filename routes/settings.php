@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\SocialLoginController;
+use App\Http\Controllers\Settings\NotificationController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\SessionController;
@@ -40,6 +41,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::inertia('settings/appearance', 'settings/appearance')->name('appearance.edit');
+
+    Route::get('settings/notifications', [NotificationController::class, 'edit'])->name('notifications.edit');
+    Route::patch('settings/notifications', [NotificationController::class, 'update'])->name('notifications.update');
+    Route::middleware('throttle:20,1')->group(function () {
+        Route::post('settings/notifications/devices', [NotificationController::class, 'subscribe'])->name('notifications.subscribe');
+        Route::delete('settings/notifications/devices', [NotificationController::class, 'unsubscribe'])->name('notifications.unsubscribe');
+    });
+    Route::post('settings/notifications/test', [NotificationController::class, 'test'])
+        ->middleware('throttle:5,1')
+        ->name('notifications.test');
 });
 
 Route::get('.well-known/passkey-endpoints', function () {

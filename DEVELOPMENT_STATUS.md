@@ -6,22 +6,22 @@ Last updated: 2026-11-13. Rules for working on the project are in [CLAUDE.md](CL
 
 **Stage:** Phases 1–8 done; Phase 9 (PWA) in progress (part 1 done). Everything is built locally in Docker. The staging VPS has not been bought yet, so nothing is deployed. The developer has asked for phases 8–10 to be built back to back, then tested together.
 
-| Phase                                  | State                       | Branch                             | Pushed |
-| -------------------------------------- | --------------------------- | ---------------------------------- | ------ |
-| 1 Architecture                         | Done                        | `main` (docs)                      | Yes    |
-| 2 Foundation                           | Done                        | `feature/phase-2-foundation`       | Yes    |
-| 3 Auth & users                         | Done                        | `feature/phase-3-auth-users`       | Yes    |
-| 4 Family tree core                     | Done                        | `feature/phase-4-family-tree`      | Yes    |
-| 5 Profiles & history                   | Done                        | `feature/phase-5-profiles-history` | Yes    |
-| 6 Collaboration                        | Done                        | `feature/phase-6-collaboration`    | Yes    |
-| 7 Media & documents                    | Done                        | `feature/phase-7-media`            | Yes    |
-| 8 Reports, GEDCOM, relationship finder | Done                        | `feature/phase-8-reports-gedcom`   | Yes    |
-| 9 PWA                                  | In progress (part 1)        | `feature/pwa-shell`                | Yes    |
-| 10 Hardening & launch                  | Not started (needs the VPS) |                                    |        |
+| Phase                                  | State                       | Branch                                  | Pushed |
+| -------------------------------------- | --------------------------- | --------------------------------------- | ------ |
+| 1 Architecture                         | Done                        | `main` (docs)                           | Yes    |
+| 2 Foundation                           | Done                        | `feature/phase-2-foundation`            | Yes    |
+| 3 Auth & users                         | Done                        | `feature/phase-3-auth-users`            | Yes    |
+| 4 Family tree core                     | Done                        | `feature/phase-4-family-tree`           | Yes    |
+| 5 Profiles & history                   | Done                        | `feature/phase-5-profiles-history`      | Yes    |
+| 6 Collaboration                        | Done                        | `feature/phase-6-collaboration`         | Yes    |
+| 7 Media & documents                    | Done                        | `feature/phase-7-media`                 | Yes    |
+| 8 Reports, GEDCOM, relationship finder | Done                        | `feature/phase-8-reports-gedcom`        | Yes    |
+| 9 PWA                                  | In progress (parts 1–2)     | `feature/pwa-shell`, `feature/pwa-push` | Yes    |
+| 10 Hardening & launch                  | Not started (needs the VPS) |                                         |        |
 
 The branches are stacked: each one starts from the previous phase. No pull requests have been opened yet.
 
-**Last full test run:** 381 passed, 1 skipped (HEIC), after the hidden-fields fix.
+**Last full test run:** 403 passed, 1 skipped (HEIC), after Phase 9 part 2 (push).
 
 ## Completed modules
 
@@ -65,7 +65,9 @@ The branches are stacked: each one starts from the previous phase. No pull reque
 
 **Offline design:** written by Fable 5.2 in [ADR 0008](docs/adr/0008-phase-9-pwa.md), "Proposed design: offline copy and sync". It **awaits the developer's answers to five decisions** listed there (the main one: require an offline passcode). Do not build the offline copy or sync before those are answered.
 
-**Next:** **Opus 5.5** builds web push, camera upload and mobile tree polish (no decision needed), then the offline copy and sync from the approved design. Bring the finished offline code back to **Fable 5.2** for review.
+Part 2 (push notifications) is done on `feature/pwa-push`; delivery to a real phone is still to be tried.
+
+**Next:** **Opus 5.5** builds camera upload and mobile tree polish (no decision needed), then the offline copy and sync from the approved design. Bring the finished offline code back to **Fable 5.2** for review.
 
 ## Pending (by phase)
 
@@ -113,6 +115,7 @@ The branches are stacked: each one starts from the previous phase. No pull reque
 
 ## Latest activity
 
+- 2026-11-13: Phase 9 part 2 (Opus 5.5) on `feature/pwa-push`: push notifications (approvals, announced events with email, morning birthday/anniversary/event reminders), Settings → Notifications, logout unsubscribes the device, push addresses limited to the browsers' push services. The push service accepted a real message; arrival on a phone not yet tried.
 - 2026-11-13: Offline copy and sync designed (Fable 5.2), in ADR 0008; awaiting approval of five decisions.
 - 2026-11-13: Privacy fix (Fable 5.2) on `fix/hidden-fields-in-edits`: when someone who cannot see a living person's details edited that person, the proposal showed them the hidden values, and approving it (or publishing directly) erased them. Hidden fields are now removed from such edits on the server (`MemberPrivacy::editableFields`), from the proposal view, and from the edit form.
 - 2026-11-13: Phase 9 part 1 (Opus 5.5) on `feature/pwa-shell`: installable app (manifest, own icons, service worker, offline page, install guide). Checked in headless Edge: installable, caches hold no pages or family data, offline page appears when the network is cut. `vite-plugin-pwa` not used (ADR 0008).

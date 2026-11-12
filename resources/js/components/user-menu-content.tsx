@@ -7,7 +7,9 @@ import {
     DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { UserInfo } from '@/components/user-info';
+import type { MouseEvent } from 'react';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
+import { unsubscribeThisDevice } from '@/lib/push';
 import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import type { User } from '@/types';
@@ -19,9 +21,14 @@ type Props = {
 export function UserMenuContent({ user }: Props) {
     const cleanup = useMobileNavigation();
 
-    const handleLogout = () => {
+    // Push stops on this device first (the push service then refuses the old address,
+    // and the server forgets it), so a shared device does not get this person's messages.
+    const handleLogout = async (event: MouseEvent) => {
+        event.preventDefault();
         cleanup();
+        await unsubscribeThisDevice(1500);
         router.flushAll();
+        router.post(logout());
     };
 
     return (
@@ -51,7 +58,7 @@ export function UserMenuContent({ user }: Props) {
                     className="block w-full cursor-pointer"
                     href={logout()}
                     as="button"
-                    onClick={handleLogout}
+                    onClick={(event) => void handleLogout(event)}
                     data-test="logout-button"
                 >
                     <LogOut className="mr-2" />

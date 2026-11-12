@@ -118,6 +118,29 @@ class FamilyOverview
     }
 
     /**
+     * Birthdays and anniversaries falling today, with the same privacy rules as the
+     * dashboard (morning push reminders).
+     *
+     * @return array{birthdays: list<string>, anniversaries: list<string>}
+     */
+    public function celebrationsToday(Family $family, MemberViewer $viewer, string $timezone): array
+    {
+        $today = CarbonImmutable::now($timezone)->startOfDay();
+        $name = fn (array $person): string => (string) ($person['nickname'] ?? null ?: $person['name']);
+
+        return [
+            'birthdays' => array_values(array_map(
+                fn (array $item): string => $name($item['person']),
+                array_filter($this->birthdays($family, $viewer, $today), fn (array $item): bool => $item['days'] === 0),
+            )),
+            'anniversaries' => array_values(array_map(
+                fn (array $item): string => $name($item['people'][0]).' & '.$name($item['people'][1]),
+                array_filter($this->anniversaries($family, $viewer, $today), fn (array $item): bool => $item['days'] === 0),
+            )),
+        ];
+    }
+
+    /**
      * @return list<array<string, mixed>>
      */
     private function birthdays(Family $family, MemberViewer $viewer, CarbonImmutable $today): array

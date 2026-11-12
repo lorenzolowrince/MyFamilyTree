@@ -195,6 +195,25 @@ function EventDialog({
                         />
                     </div>
 
+                    <label className="flex items-start gap-2 text-sm">
+                        <input
+                            type="checkbox"
+                            className="mt-0.5 size-4 rounded border-input"
+                            checked={form.data.notify_members}
+                            onChange={(e) =>
+                                form.setData('notify_members', e.target.checked)
+                            }
+                        />
+                        <span>
+                            Let the family know
+                            <span className="block text-muted-foreground">
+                                {event
+                                    ? 'A reminder the day before, to those who turned on push notifications.'
+                                    : 'An email to everyone in the family now, and a reminder the day before to those who turned on push notifications.'}
+                            </span>
+                        </span>
+                    </label>
+
                     <DialogFooter className="sm:justify-between">
                         {event ? (
                             <Button

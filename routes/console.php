@@ -19,3 +19,6 @@ Schedule::command('media:purge')->dailyAt('03:40')->withoutOverlapping();
 
 // Delete report files that have expired and GEDCOM uploads nobody confirmed.
 Schedule::command('reports:purge')->dailyAt('03:50')->withoutOverlapping();
+
+// Morning push reminders: each person at 08:00 in their own time zone.
+Schedule::command('notifications:morning')->hourlyAt(5)->withoutOverlapping();

@@ -3,17 +3,22 @@
 namespace App\Http\Controllers\Families;
 
 use App\Enums\EventType;
+use App\Enums\MembershipStatus;
+use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Families\FamilyEventRequest;
 use App\Models\Family;
 use App\Models\FamilyEvent;
+use App\Models\FamilyMembership;
 use App\Models\TimelineEntry;
 use App\Models\User;
+use App\Notifications\FamilyEventAnnounced;
 use App\Support\FuzzyDate\FuzzyDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -73,6 +78,20 @@ class EventController extends Controller
         $event->family_id = $family->id;
         $event->created_by = $user->id;
         $this->fill($event, $request, $user)->save();
+
+        // Announced once, when added; edits do not announce it again.
+        if ($event->notify_members && ! $event->hasHappened()) {
+            $recipients = User::query()
+                ->whereIn('id', FamilyMembership::query()
+                    ->where('family_id', $family->id)
+                    ->where('status', MembershipStatus::Active->value)
+                    ->select('user_id'))
+                ->where('status', UserStatus::Active->value)
+                ->whereKeyNot($user->id)
+                ->get();
+
+            Notification::send($recipients, new FamilyEventAnnounced($event, $family));
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Event added.')]);
 

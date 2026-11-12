@@ -22,6 +22,10 @@ class RevokeSessions
 
         $user->forceFill(['remember_token' => Str::random(60)])->saveQuietly();
 
+        // Push notifications stop too, on every device (including this one: a subscription
+        // is not tied to a session, so it cannot be told apart). Turning push on again is one tap.
+        $user->pushSubscriptions()->delete();
+
         return $deleted;
     }
 

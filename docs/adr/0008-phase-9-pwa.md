@@ -44,6 +44,48 @@ Verified in headless Edge on 2026-11-13: after visiting the dashboard, the famil
 - Change `VERSION` in `public/sw.js` when its list of static files changes.
 - Service workers need HTTPS, except on `localhost`.
 
+## Part 2: push notifications (2026-11-13)
+
+Built by Opus 5.5 on `feature/pwa-push`. Email stays the main channel; push is an extra on devices where the person turns it on.
+
+| Area             | Delivered                                                                                                                                                                                                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Package          | `laravel-notification-channels/webpush` 13.0.1 (named in the architecture; MIT; supports Laravel 13; `composer audit` clean). It uses `minishlink/web-push`.                                                                                                                   |
+| Settings         | Settings → Notifications: turn push on or off for this device, send a test, and choose topics: Approvals, Family events, Birthdays and anniversaries.                                                                                                                          |
+| Approvals        | `ChangeRequestSubmitted` and `ChangeRequestDecided` also push, to those who want it.                                                                                                                                                                                           |
+| Events           | `family_events.notify_members` is now acted on. A new event is announced by email to the rest of the family, and by push where on. The event form shows the setting ("Let the family know"). Editing does not announce again.                                                  |
+| Morning reminder | `notifications:morning`, hourly: at 08:00 in each person's own time zone, one push per family with today's birthdays and anniversaries (the dashboard's rules, so only those whose dates the person may see) and tomorrow's announced events. Once per day, even if run twice. |
+| Service worker   | Shows the message; a tap opens the link only if it is inside this app, otherwise the dashboard.                                                                                                                                                                                |
+| iPhone and iPad  | Push is offered only in the app added to the Home Screen; the page explains this.                                                                                                                                                                                              |
+
+### Security and privacy
+
+- **SSRF:** the server sends requests to the address a browser gives. Only HTTPS addresses at the browsers' push services are accepted (`config/webpush.php` `allowed_hosts`), checked in `PushEndpoint` and by a database CHECK. IP addresses, other ports, credentials in the address and look-alike hosts are refused (tested).
+- **Locked screens:** push texts name the family and what happened. Approval messages name no person. Morning reminders name people only for those who may see their dates.
+- **Shared devices:** logging out unsubscribes the browser. Revoking sessions (log out other devices, password reset, deactivation, suspension) and erasing an account delete every subscription. A device used by two accounts belongs to the last one that turned push on.
+- **No tracking:** the settings page receives SHA-256 hashes of the person's own subscriptions, not the addresses.
+- The VAPID keys are secrets in `.env` (`php artisan webpush:vapid` once per server). Changing them ends every subscription silently.
+
+### Verified
+
+- Tests: `tests/Feature/Settings/PushNotificationsTest.php` (22 tests, including the address checks, each topic, the morning reminder per role and time zone, and revocation).
+- Headless Edge: turning push on subscribed to the Windows push service; the server sent a real message and the service **accepted it (HTTP 201)**, which proves the VAPID signature and encryption. Messages delivered through DevTools were shown by the service worker; an outside link became the dashboard; a malformed message did not break it. Logging out unsubscribed the browser.
+- **Not verified:** a message actually appearing on a phone. Headless Edge is not connected to the Windows notification service. Try "Send a test" on a real Android phone and an iPhone (app added to the Home Screen) once the app is on HTTPS.
+
+### Differences from the plan
+
+| Planned                                                                 | Implemented                                          | Reason                                                                                                         |
+| ----------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `notification_preferences (user_id, family_id, channel, type, enabled)` | `users.push_topics` (jsonb list; null = all topics)  | Only push has choices so far, and none per family. The table can come when email or per-family choices do.     |
+| The package's own migration                                             | `2026_11_17_000001_create_push_subscriptions_table`  | The package's uses a numeric owner id (users have UUIDs) and MySQL-only column options; ours adds CHECKs.      |
+| Push for approvals, events, birthdays, anniversaries                    | As planned, plus an email when an event is announced | `notify_members` meant "tell the family"; without email, iPhone users without the installed app heard nothing. |
+
+### Operating notes
+
+- On the server: set `VAPID_SUBJECT` (a `mailto:` or `https:` contact), generate the keys once, and keep them with the other secrets.
+- The scheduler must run (`notifications:morning` hourly at :05). Restart Horizon after changing notification code.
+- Local note: every request takes about 6 seconds on this PC because the code is on a Windows folder shared into Docker. This is not caused by the app and will not happen on the server.
+
 ## Proposed design: offline copy and sync (2026-11-13, awaiting the developer's approval)
 
 Designed by Fable 5.2 for implementation by Opus 5.5. Nothing in this section is built yet. It replaces "Security of local data" and "Offline editing and synchronisation" in [07-pwa.md](../architecture/07-pwa.md) where the two differ.

@@ -19,6 +19,7 @@ class EraseAccount
         DB::transaction(function () use ($user): void {
             $user->socialAccounts()->delete();
             $user->passkeys()->delete();
+            $user->pushSubscriptions()->delete();
             $user->loginActivities()->delete();
             $user->memberships()->delete();
 
