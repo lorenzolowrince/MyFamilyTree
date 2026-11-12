@@ -102,6 +102,18 @@ class Family extends Model
         return $this->hasMany(TimelineEntry::class);
     }
 
+    /** @return HasMany<FamilyInvitation, $this> */
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(FamilyInvitation::class);
+    }
+
+    /** @return HasMany<ChangeRequest, $this> */
+    public function changes(): HasMany
+    {
+        return $this->hasMany(ChangeRequest::class);
+    }
+
     /** @return HasMany<FamilyEvent, $this> */
     public function events(): HasMany
     {

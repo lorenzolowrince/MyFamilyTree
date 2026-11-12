@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Enums\Gender;
 use App\Enums\LivingStatus;
 use App\Enums\Visibility;
+use App\Services\Audit\HasHistory;
+use App\Services\Audit\RecordsHistory;
 use App\Support\FuzzyDate\FuzzyDate;
 use App\Support\FuzzyDate\FuzzyDateCast;
 use Database\Factories\FamilyMemberFactory;
@@ -54,10 +56,10 @@ use Illuminate\Support\Carbon;
  * @property-read Place|null $deathPlace
  * @property-read Place|null $hometown
  */
-class FamilyMember extends Model
+class FamilyMember extends Model implements HasHistory
 {
     /** @use HasFactory<FamilyMemberFactory> */
-    use HasFactory, HasUuids, SoftDeletes;
+    use HasFactory, HasUuids, RecordsHistory, SoftDeletes;
 
     /** Someone of unknown status born longer ago than this is no longer presumed living. */
     public const PRESUMED_LIVING_YEARS = 110;
@@ -152,5 +154,29 @@ class FamilyMember extends Model
     public function scopeInFamily(Builder $query, Family|string $family): void
     {
         $query->where($this->qualifyColumn('family_id'), $family instanceof Family ? $family->id : $family);
+    }
+
+    public function historyNoun(): string
+    {
+        return 'member';
+    }
+
+    public function historySummary(string $event): ?string
+    {
+        // Placeholders ("Unknown parent") come and go with the links that need them.
+        if ($this->is_placeholder && $event !== 'updated') {
+            return null;
+        }
+
+        return match ($event) {
+            'created' => __('added :name to the tree', ['name' => $this->full_name]),
+            'deleted' => __('removed :name from the tree', ['name' => $this->full_name]),
+            default => __('updated :name', ['name' => $this->full_name]),
+        };
+    }
+
+    public function historyVisibility(): string
+    {
+        return $this->visibility->value;
     }
 }

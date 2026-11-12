@@ -18,6 +18,8 @@ type Props = {
         name: string;
         description: string | null;
         cover_url: string | null;
+        editors_need_approval: boolean;
+        contributors_publish_directly: boolean;
     };
 };
 
@@ -25,6 +27,8 @@ export default function FamilySettings({ family }: Props) {
     const form = useForm({
         name: family.name,
         description: family.description ?? '',
+        editors_need_approval: family.editors_need_approval,
+        contributors_publish_directly: family.contributors_publish_directly,
     });
     const fileInput = useRef<HTMLInputElement>(null);
     const [coverError, setCoverError] = useState<string>();
@@ -120,6 +124,47 @@ export default function FamilySettings({ family }: Props) {
                             />
                             <InputError message={form.errors.description} />
                         </div>
+                        <fieldset className="grid gap-3 rounded-lg border p-4">
+                            <legend className="px-1 text-sm font-medium">
+                                Approval of changes
+                            </legend>
+                            <p className="text-sm text-muted-foreground">
+                                By default, Editors&apos; changes apply at once
+                                and Contributors&apos; changes wait for
+                                approval.
+                            </p>
+                            <label className="flex items-start gap-3 text-sm">
+                                <input
+                                    type="checkbox"
+                                    className="mt-0.5 size-4 rounded border-input"
+                                    checked={form.data.editors_need_approval}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'editors_need_approval',
+                                            event.target.checked,
+                                        )
+                                    }
+                                />
+                                Editors&apos; changes also need approval by the
+                                owner or an administrator
+                            </label>
+                            <label className="flex items-start gap-3 text-sm">
+                                <input
+                                    type="checkbox"
+                                    className="mt-0.5 size-4 rounded border-input"
+                                    checked={
+                                        form.data.contributors_publish_directly
+                                    }
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'contributors_publish_directly',
+                                            event.target.checked,
+                                        )
+                                    }
+                                />
+                                Contributors may add and edit without approval
+                            </label>
+                        </fieldset>
                         <div>
                             <Button type="submit" disabled={form.processing}>
                                 Save

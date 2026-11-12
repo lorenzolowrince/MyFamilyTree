@@ -82,6 +82,12 @@ class FamilyPolicy
             : Response::deny(__('You can only assign roles below your own.'));
     }
 
+    /** The readable activity feed: Editors and above. */
+    public function viewActivity(User $user, Family $family): Response
+    {
+        return $this->check($user, $family, FamilyPermission::AuditViewRecords);
+    }
+
     public function viewAudit(User $user, Family $family): Response
     {
         return $this->check($user, $family, FamilyPermission::AuditView);

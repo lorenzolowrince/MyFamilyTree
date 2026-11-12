@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Families\FamilyRequest;
 use App\Models\Family;
 use App\Models\User;
+use App\Services\Audit\HistoryRecorder;
 use App\Services\Authorization\FamilyAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -72,15 +73,30 @@ class FamilyController extends Controller
                 'name' => $family->name,
                 'description' => $family->description,
                 'cover_url' => CoverController::url($family),
+                'editors_need_approval' => (bool) ($family->settings['approval']['editors_need_approval'] ?? false),
+                'contributors_publish_directly' => (bool) ($family->settings['approval']['contributors_publish_directly'] ?? false),
             ],
         ]);
     }
 
-    public function update(FamilyRequest $request, Family $family): RedirectResponse
+    public function update(FamilyRequest $request, Family $family, HistoryRecorder $history): RedirectResponse
     {
         $this->authorize('update', $family);
 
-        $family->update($request->safe()->only(['name', 'description']));
+        $family->fill($request->safe()->only(['name', 'description']));
+
+        $approval = $request->safe()->only(['editors_need_approval', 'contributors_publish_directly']);
+
+        if ($approval !== []) {
+            $family->settings = [...$family->settings, 'approval' => [...($family->settings['approval'] ?? []), ...array_map('boolval', $approval)]];
+        }
+
+        $changed = $family->getDirty();
+        $family->save();
+
+        if ($changed !== []) {
+            $history->audit('family.updated', $family->id, 'family', $family->id, null, $changed);
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Family details saved.')]);
 

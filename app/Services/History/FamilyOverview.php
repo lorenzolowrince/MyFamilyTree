@@ -2,6 +2,7 @@
 
 namespace App\Services\History;
 
+use App\Enums\FamilyPermission;
 use App\Enums\PartnershipStatus;
 use App\Enums\RelationshipType;
 use App\Models\Family;
@@ -62,7 +63,37 @@ class FamilyOverview
                     'location' => $event->location_text,
                 ])
                 ->all(),
+            'activity' => $this->activity($family, $viewer),
         ];
+    }
+
+    /**
+     * The latest lines of the activity feed, or null for people who may not read it
+     * (Viewers and Contributors). Lines about records this person may not see are left out.
+     *
+     * @return list<array{id: string, summary: string, actor: string|null, created_at: string}>|null
+     */
+    private function activity(Family $family, MemberViewer $viewer): ?array
+    {
+        if (! $viewer->has(FamilyPermission::AuditViewRecords)) {
+            return null;
+        }
+
+        return array_values(DB::table('activity_logs')
+            ->leftJoin('users', 'users.id', '=', 'activity_logs.user_id')
+            ->where('activity_logs.family_id', $family->id)
+            ->whereIn('activity_logs.visibility', $viewer->visibleLevels())
+            ->orderByDesc('activity_logs.created_at')
+            ->orderByDesc('activity_logs.id')
+            ->limit(6)
+            ->get(['activity_logs.id', 'activity_logs.summary', 'activity_logs.created_at', 'users.name as actor'])
+            ->map(fn (\stdClass $row): array => [
+                'id' => (string) $row->id,
+                'summary' => (string) $row->summary,
+                'actor' => $row->actor === null ? null : (string) $row->actor,
+                'created_at' => (string) $row->created_at,
+            ])
+            ->all());
     }
 
     /**

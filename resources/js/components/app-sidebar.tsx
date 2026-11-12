@@ -1,5 +1,10 @@
 import { Link, usePage } from '@inertiajs/react';
-import { ChevronsUpDown, ShieldCheck } from 'lucide-react';
+import {
+    Activity,
+    ChevronsUpDown,
+    ClipboardCheck,
+    ShieldCheck,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -17,11 +22,40 @@ import { mainNavItems } from '@/lib/navigation';
 import { dashboard } from '@/routes';
 import { overview as adminOverview } from '@/routes/admin';
 import { index as familiesIndex } from '@/routes/families';
+import { index as activityIndex } from '@/routes/families/activity';
+import { index as changesIndex } from '@/routes/families/changes';
 import type { NavItem } from '@/types';
 
 export function AppSidebar() {
     const { auth, currentFamily } = usePage().props;
-    const nav = mainNavItems(currentFamily);
+    const permissions = currentFamily?.permissions ?? [];
+
+    // Shown to everyone in a family: reviewers decide here, others follow their proposals.
+    const familyExtras: NavItem[] = currentFamily
+        ? [
+              {
+                  title: 'Approvals',
+                  href: changesIndex(currentFamily.slug),
+                  icon: ClipboardCheck,
+                  badge: currentFamily.pendingChanges,
+              },
+              ...(permissions.includes('audit.view_records')
+                  ? [
+                        {
+                            title: 'Activity',
+                            href: activityIndex(currentFamily.slug),
+                            icon: Activity,
+                        },
+                    ]
+                  : []),
+          ]
+        : [];
+
+    const nav = [
+        ...mainNavItems(currentFamily).slice(0, -1),
+        ...familyExtras,
+        ...mainNavItems(currentFamily).slice(-1),
+    ];
 
     // A hint only: the server decides who may open the admin area.
     const items: NavItem[] = auth.user?.is_super_admin

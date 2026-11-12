@@ -7,6 +7,7 @@ use App\Models\Family;
 use App\Models\TimelineEntry;
 use App\Models\User;
 use App\Services\Authorization\FamilyAccess;
+use App\Services\Collaboration\ChangeMode;
 use Illuminate\Auth\Access\Response;
 
 /**
@@ -22,9 +23,14 @@ class TimelineEntryPolicy
         return $this->check($user, $family, FamilyPermission::TreeView);
     }
 
+    /** Directly, or as a proposal for roles whose changes need approval. */
     public function create(User $user, Family $family): Response
     {
-        return $this->check($user, $family, FamilyPermission::TimelineCreate);
+        if (! $this->access->isMember($user, $family)) {
+            return Response::denyAsNotFound();
+        }
+
+        return app(ChangeMode::class)->forEdit($user, $family) === ChangeMode::DENY ? Response::deny() : Response::allow();
     }
 
     public function update(User $user, TimelineEntry $entry): Response

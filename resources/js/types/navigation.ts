@@ -12,6 +12,8 @@ export type NavItem = {
     href?: NonNullable<InertiaLinkProps['href']>;
     icon?: LucideIcon | null;
     isActive?: boolean;
+    /** A count shown beside the title (things waiting for the person). */
+    badge?: number;
     /** Roadmap phase that delivers this section; set only while it is unavailable. */
     availableInPhase?: number;
 };

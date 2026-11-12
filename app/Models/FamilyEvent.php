@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\EventType;
+use App\Services\Audit\HasHistory;
+use App\Services\Audit\RecordsHistory;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -30,9 +32,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  */
-class FamilyEvent extends Model
+class FamilyEvent extends Model implements HasHistory
 {
-    use HasUuids, SoftDeletes;
+    use HasUuids, RecordsHistory, SoftDeletes;
 
     /**
      * @var array<string, mixed>
@@ -66,5 +68,19 @@ class FamilyEvent extends Model
     public function hasHappened(): bool
     {
         return ($this->ends_at ?? $this->starts_at)->isPast();
+    }
+
+    public function historyNoun(): string
+    {
+        return 'event';
+    }
+
+    public function historySummary(string $event): ?string
+    {
+        return match ($event) {
+            'created' => __('scheduled the event ":title"', ['title' => $this->title]),
+            'deleted' => __('removed the event ":title"', ['title' => $this->title]),
+            default => __('updated the event ":title"', ['title' => $this->title]),
+        };
     }
 }

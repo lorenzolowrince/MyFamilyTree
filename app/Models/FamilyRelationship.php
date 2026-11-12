@@ -7,6 +7,8 @@ use App\Enums\ParentSubtype;
 use App\Enums\PartnershipStatus;
 use App\Enums\PartnershipSubtype;
 use App\Enums\RelationshipType;
+use App\Services\Audit\HasHistory;
+use App\Services\Audit\RecordsHistory;
 use App\Support\FuzzyDate\FuzzyDate;
 use App\Support\FuzzyDate\FuzzyDateCast;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -43,9 +45,9 @@ use Illuminate\Support\Carbon;
  * @property-read FamilyMember|null $personB
  * @property-read Place|null $place
  */
-class FamilyRelationship extends Model
+class FamilyRelationship extends Model implements HasHistory
 {
-    use HasUuids, SoftDeletes;
+    use HasUuids, RecordsHistory, SoftDeletes;
 
     /**
      * @var array<string, mixed>
@@ -127,5 +129,52 @@ class FamilyRelationship extends Model
         return $this->isParentChild()
             ? (ParentSubtype::tryFrom($this->subtype)?->label() ?? $this->subtype)
             : (PartnershipSubtype::tryFrom($this->subtype)?->label() ?? $this->subtype);
+    }
+
+    public function historyNoun(): string
+    {
+        return 'relationship';
+    }
+
+    public function historySummary(string $event): ?string
+    {
+        $a = $this->personA()->withTrashed()->first();
+        $b = $this->personB()->withTrashed()->first();
+
+        if ($a === null || $b === null) {
+            return null;
+        }
+
+        $names = ['a' => $a->full_name, 'b' => $b->full_name];
+
+        if ($this->isParentChild()) {
+            return match ($event) {
+                'created' => __('linked :a as a parent of :b', $names),
+                'deleted' => __('removed the parent link between :a and :b', $names),
+                default => __('changed the parent link between :a and :b', $names),
+            };
+        }
+
+        return match ($event) {
+            'created' => __('recorded :a and :b as partners', $names),
+            'deleted' => __('removed the partnership of :a and :b', $names),
+            default => __('updated the partnership of :a and :b', $names),
+        };
+    }
+
+    public function historyVisibility(): string
+    {
+        $levels = ['family' => 0, 'restricted' => 1, 'private' => 2];
+        $strictest = 'family';
+
+        foreach ([$this->personA()->withTrashed()->first(), $this->personB()->withTrashed()->first()] as $person) {
+            $level = $person === null ? 'family' : $person->visibility->value;
+
+            if ($levels[$level] > $levels[$strictest]) {
+                $strictest = $level;
+            }
+        }
+
+        return $strictest;
     }
 }

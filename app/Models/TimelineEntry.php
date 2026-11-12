@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\TimelineCategory;
 use App\Enums\Visibility;
+use App\Services\Audit\HasHistory;
+use App\Services\Audit\RecordsHistory;
 use App\Support\FuzzyDate\FuzzyDate;
 use App\Support\FuzzyDate\FuzzyDateCast;
 use Illuminate\Database\Eloquent\Collection;
@@ -33,9 +35,9 @@ use Illuminate\Support\Carbon;
  * @property-read Place|null $place
  * @property-read Collection<int, FamilyMember> $participants
  */
-class TimelineEntry extends Model
+class TimelineEntry extends Model implements HasHistory
 {
-    use HasUuids, SoftDeletes;
+    use HasUuids, RecordsHistory, SoftDeletes;
 
     protected $table = 'family_timeline';
 
@@ -76,5 +78,24 @@ class TimelineEntry extends Model
     {
         return $this->belongsToMany(FamilyMember::class, 'timeline_participants', 'timeline_id', 'member_id')
             ->withPivot(['role', 'family_id']);
+    }
+
+    public function historyNoun(): string
+    {
+        return 'timeline';
+    }
+
+    public function historySummary(string $event): ?string
+    {
+        return match ($event) {
+            'created' => __('added ":title" to the timeline', ['title' => $this->title]),
+            'deleted' => __('removed ":title" from the timeline', ['title' => $this->title]),
+            default => __('updated the timeline entry ":title"', ['title' => $this->title]),
+        };
+    }
+
+    public function historyVisibility(): string
+    {
+        return $this->visibility->value;
     }
 }

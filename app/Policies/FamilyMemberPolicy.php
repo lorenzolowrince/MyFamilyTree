@@ -3,11 +3,11 @@
 namespace App\Policies;
 
 use App\Enums\FamilyPermission;
-use App\Enums\FamilyRole;
 use App\Models\Family;
 use App\Models\FamilyMember;
 use App\Models\User;
 use App\Services\Authorization\FamilyAccess;
+use App\Services\Collaboration\ChangeMode;
 use App\Services\Privacy\MemberPrivacy;
 use Illuminate\Auth\Access\Response;
 
@@ -15,56 +15,62 @@ use Illuminate\Auth\Access\Response;
  * Authorisation for the people in a tree and the links between them.
  *
  * Order of checks: active member of the family (otherwise "not found") → record visibility
- * (a record the viewer may not see is also "not found") → the role's permission.
+ * (a record the viewer may not see is also "not found") → what the role allows.
  *
- * Contributors' additions and edits become change requests in Phase 6; until then they can
- * edit only their own linked profile.
+ * `create`, `update`, `delete` and `manageRelationships` answer "may this person submit this
+ * change at all?". Whether it is applied at once or goes to the approval queue is decided by
+ * ChangeMode. The `...Directly` abilities are for changes that have no approval path.
  */
 class FamilyMemberPolicy
 {
     public function __construct(
         private readonly FamilyAccess $access,
         private readonly MemberPrivacy $privacy,
+        private readonly ChangeMode $mode,
     ) {}
 
     public function viewAny(User $user, Family $family): Response
     {
-        return $this->check($user, $family, FamilyPermission::TreeView);
+        if (! $this->access->isMember($user, $family)) {
+            return Response::denyAsNotFound();
+        }
+
+        return $this->access->can($user, $family, FamilyPermission::TreeView) ? Response::allow() : Response::deny();
     }
 
     public function view(User $user, FamilyMember $member): Response
     {
-        $family = $this->family($member);
-
-        return $this->privacy->viewer($user, $family)->canView($member)
+        return $this->privacy->viewer($user, $this->family($member))->canView($member)
             ? Response::allow()
             : Response::denyAsNotFound();
     }
 
     public function create(User $user, Family $family): Response
     {
-        return $this->check($user, $family, FamilyPermission::MembersCreate, $this->proposalNotice($user, $family));
+        return $this->unlessDenied($user, $family, $this->mode->forEdit($user, $family));
     }
 
     public function update(User $user, FamilyMember $member): Response
     {
         $family = $this->family($member);
-        $viewer = $this->privacy->viewer($user, $family);
 
-        if (! $viewer->canView($member)) {
+        if (! $this->privacy->viewer($user, $family)->canView($member)) {
             return Response::denyAsNotFound();
         }
 
-        if ($viewer->has(FamilyPermission::MembersUpdate)) {
-            return Response::allow();
+        return $this->unlessDenied($user, $family, $this->mode->forEdit($user, $family, $member));
+    }
+
+    /** Changes that are applied at once or not at all (other names, for example). */
+    public function updateDirectly(User $user, FamilyMember $member): Response
+    {
+        $family = $this->family($member);
+
+        if (! $this->privacy->viewer($user, $family)->canView($member)) {
+            return Response::denyAsNotFound();
         }
 
-        // "Own linked profile: allowed" for Contributors.
-        if ($viewer->isSelf($member) && $viewer->role === FamilyRole::Contributor) {
-            return Response::allow();
-        }
-
-        return Response::deny($this->proposalNotice($user, $family));
+        return $this->mode->forEdit($user, $family, $member) === ChangeMode::DIRECT ? Response::allow() : Response::deny();
     }
 
     public function delete(User $user, FamilyMember $member): Response
@@ -75,31 +81,32 @@ class FamilyMemberPolicy
             return Response::denyAsNotFound();
         }
 
-        return $this->check($user, $family, FamilyPermission::MembersDelete);
+        return $this->unlessDenied($user, $family, $this->mode->forDelete($user, $family));
     }
 
-    /** Add, change or remove links between people. */
+    /** Add links between people (directly or by proposal). */
     public function manageRelationships(User $user, Family $family): Response
     {
-        return $this->check($user, $family, FamilyPermission::RelationshipsManage, $this->proposalNotice($user, $family));
+        return $this->unlessDenied($user, $family, $this->mode->forEdit($user, $family));
     }
 
-    private function check(User $user, Family $family, FamilyPermission $permission, ?string $message = null): Response
+    /** Change or remove existing links: there is no approval path for these. */
+    public function manageRelationshipsDirectly(User $user, Family $family): Response
     {
         if (! $this->access->isMember($user, $family)) {
             return Response::denyAsNotFound();
         }
 
-        return $this->access->can($user, $family, $permission)
-            ? Response::allow()
-            : Response::deny($message);
+        return $this->mode->forEdit($user, $family) === ChangeMode::DIRECT ? Response::allow() : Response::deny();
     }
 
-    private function proposalNotice(User $user, Family $family): ?string
+    private function unlessDenied(User $user, Family $family, string $mode): Response
     {
-        return $this->access->can($user, $family, FamilyPermission::ChangesPropose)
-            ? (string) __('Your role submits changes for approval. Submitting proposals is not available yet.')
-            : null;
+        if (! $this->access->isMember($user, $family)) {
+            return Response::denyAsNotFound();
+        }
+
+        return $mode === ChangeMode::DENY ? Response::deny() : Response::allow();
     }
 
     private function family(FamilyMember $member): Family

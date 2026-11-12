@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Enums\FamilyPermission;
 use App\Enums\MembershipStatus;
+use App\Models\ChangeRequest;
 use App\Models\Family;
 use App\Models\User;
 use App\Services\Authorization\FamilyAccess;
@@ -56,7 +57,7 @@ class HandleInertiaRequests extends Middleware
      * else the person's first family. Null when they belong to none. The permission list is a
      * hint for showing or hiding buttons; the server authorises every request regardless.
      *
-     * @return array{slug: string, name: string, role: string, permissions: list<string>}|null
+     * @return array{slug: string, name: string, role: string, pendingChanges: int, permissions: list<string>}|null
      */
     private function currentFamily(Request $request): ?array
     {
@@ -93,6 +94,9 @@ class HandleInertiaRequests extends Middleware
             'slug' => $family->slug,
             'name' => $family->name,
             'role' => $role->label(),
+            'pendingChanges' => $access->roleHas($role, FamilyPermission::ChangesReview)
+                ? ChangeRequest::query()->where('family_id', $family->id)->where('status', 'pending')->where('submitted_by', '<>', $user->id)->count()
+                : 0,
             'permissions' => array_values(array_map(
                 fn (FamilyPermission $permission): string => $permission->value,
                 array_filter(FamilyPermission::cases(), fn (FamilyPermission $permission): bool => $access->roleHas($role, $permission)),

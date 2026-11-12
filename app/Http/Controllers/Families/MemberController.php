@@ -12,6 +12,8 @@ use App\Models\Family;
 use App\Models\FamilyMember;
 use App\Models\MemberName;
 use App\Models\User;
+use App\Services\Collaboration\ChangeMode;
+use App\Services\Collaboration\ChangeRequests;
 use App\Services\Genealogy\DuplicateDetector;
 use App\Services\Genealogy\RelativesPresenter;
 use App\Services\History\TimelineBuilder;
@@ -31,6 +33,8 @@ class MemberController extends Controller
     public function __construct(
         private readonly MemberPrivacy $privacy,
         private readonly MemberPresenter $presenter,
+        private readonly ChangeMode $mode,
+        private readonly ChangeRequests $changes,
     ) {}
 
     public function index(Request $request, Family $family): Response
@@ -129,7 +133,16 @@ class MemberController extends Controller
                 'delete' => $user->can('delete', $member),
                 'addPeople' => $user->can('create', [FamilyMember::class, $family]),
                 'manageRelationships' => $user->can('manageRelationships', [FamilyMember::class, $family]),
+                'editRelationships' => $user->can('manageRelationshipsDirectly', [FamilyMember::class, $family]),
+                'editNames' => $user->can('updateDirectly', $member),
+                'editRestricted' => $viewer->canViewNotes($member),
                 'setRoot' => $user->can('update', $family),
+            ],
+            // How changes by this viewer are handled: applied at once, or sent for approval.
+            'changeMode' => [
+                'edit' => $this->mode->forEdit($user, $family, $member),
+                'add' => $this->mode->forEdit($user, $family),
+                'delete' => $this->mode->forDelete($user, $family),
             ],
             'options' => FormOptions::genealogy(),
         ]);
@@ -141,6 +154,16 @@ class MemberController extends Controller
 
         /** @var User $user */
         $user = $request->user();
+
+        if ($this->mode->forEdit($user, $family) === ChangeMode::PROPOSE) {
+            $data = $request->memberData();
+            unset($data['notes'], $data['visibility']);
+            $this->changes->proposeMemberCreate($family, $user, $data);
+
+            Inertia::flash('toast', ['type' => 'success', 'message' => __('Sent for approval. It will appear in the tree once a reviewer approves it.')]);
+
+            return to_route('families.changes.index', $family);
+        }
 
         $member = $create->handle($family, $user, $request->memberData());
 
@@ -163,6 +186,16 @@ class MemberController extends Controller
             unset($data['notes'], $data['visibility']);
         }
 
+        if ($this->mode->forEdit($user, $family, $member) === ChangeMode::PROPOSE) {
+            $proposal = $this->changes->proposeMemberUpdate($family, $user, $member, $data, (int) $request->validated('version'));
+
+            Inertia::flash('toast', $proposal === null
+                ? ['type' => 'info', 'message' => __('Nothing was changed.')]
+                : ['type' => 'success', 'message' => __('Sent for approval. It will appear in the tree once a reviewer approves it.')]);
+
+            return to_route('families.members.show', [$family, $member]);
+        }
+
         $update->handle($member, $user, $data, (int) $request->validated('version'));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Changes saved.')]);
@@ -176,6 +209,14 @@ class MemberController extends Controller
 
         /** @var User $user */
         $user = $request->user();
+
+        if ($this->mode->forDelete($user, $family) === ChangeMode::PROPOSE) {
+            $this->changes->proposeMemberDelete($family, $user, $member);
+
+            Inertia::flash('toast', ['type' => 'success', 'message' => __('Removal sent for approval by the owner or an administrator.')]);
+
+            return to_route('families.members.show', [$family, $member]);
+        }
 
         $delete->handle($member, $user);
 

@@ -3,6 +3,7 @@
 use App\Enums\FamilyRole;
 use App\Enums\LivingStatus;
 use App\Enums\Visibility;
+use App\Models\ChangeRequest;
 use App\Models\FamilyEvent;
 use App\Models\MemberName;
 use App\Models\TimelineEntry;
@@ -107,7 +108,7 @@ test('the timeline merges recorded entries with births, deaths and marriages in 
         ->and($entry->event->label())->toBe('about 1960');
 });
 
-test('timeline entries can be edited and removed by editors, not by contributors or viewers', function (FamilyRole $role, bool $allowed) {
+test('timeline entries: editors change them directly, contributors propose additions, viewers cannot', function (FamilyRole $role, string $mode) {
     [$family, $owner] = treeFamily();
     $this->actingAs($owner)->post(route('families.timeline.store', $family), ['title' => 'Reunion', 'category' => 'reunion']);
     $entry = TimelineEntry::query()->sole();
@@ -115,17 +116,19 @@ test('timeline entries can be edited and removed by editors, not by contributors
     $this->actingAs(memberWithRole($family, $role));
     $this->get(route('families.timeline.index', $family))->assertOk();
 
-    $check = fn ($response) => $allowed ? $response->assertRedirect() : $response->assertForbidden();
+    $check = fn ($response, bool $allowed) => $allowed ? $response->assertRedirect() : $response->assertForbidden();
 
-    $check($this->post(route('families.timeline.store', $family), ['title' => 'Another', 'category' => 'other']));
-    $check($this->patch(route('families.timeline.update', [$family, $entry]), ['title' => 'Renamed', 'category' => 'reunion']));
-    $check($this->delete(route('families.timeline.destroy', [$family, $entry])));
+    $check($this->post(route('families.timeline.store', $family), ['title' => 'Another', 'category' => 'other']), $mode !== 'deny');
+    $check($this->patch(route('families.timeline.update', [$family, $entry]), ['title' => 'Renamed', 'category' => 'reunion']), $mode === 'direct');
+    $check($this->delete(route('families.timeline.destroy', [$family, $entry])), $mode === 'direct');
 
-    expect(TimelineEntry::query()->whereKey($entry->id)->exists())->toBe(! $allowed);
+    expect(TimelineEntry::query()->whereKey($entry->id)->exists())->toBe($mode !== 'direct')
+        ->and(TimelineEntry::query()->where('title', 'Another')->exists())->toBe($mode === 'direct')
+        ->and(ChangeRequest::query()->where('target_type', 'timeline')->count())->toBe($mode === 'propose' ? 1 : 0);
 })->with([
-    'editor' => [FamilyRole::Editor, true],
-    'contributor' => [FamilyRole::Contributor, false],
-    'viewer' => [FamilyRole::Viewer, false],
+    'editor' => [FamilyRole::Editor, 'direct'],
+    'contributor' => [FamilyRole::Contributor, 'propose'],
+    'viewer' => [FamilyRole::Viewer, 'deny'],
 ]);
 
 test('the timeline respects privacy: living people\'s dates, hidden people and restricted entries', function () {

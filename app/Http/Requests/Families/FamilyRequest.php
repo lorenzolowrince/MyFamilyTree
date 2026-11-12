@@ -17,6 +17,9 @@ class FamilyRequest extends FormRequest
             'name' => ['required', 'string', 'min:2', 'max:120'],
             'description' => ['nullable', 'string', 'max:2000'],
             'add_myself' => ['sometimes', 'boolean'],
+            // Approval policy (docs/architecture/05-roles-permissions.md).
+            'editors_need_approval' => ['sometimes', 'boolean'],
+            'contributors_publish_directly' => ['sometimes', 'boolean'],
         ];
     }
 }

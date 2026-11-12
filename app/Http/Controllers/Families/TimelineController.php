@@ -2,23 +2,22 @@
 
 namespace App\Http\Controllers\Families;
 
+use App\Actions\Timeline\SaveTimelineEntry;
 use App\Enums\TimelineCategory;
-use App\Enums\Visibility;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Families\TimelineEntryRequest;
 use App\Models\Family;
 use App\Models\FamilyMember;
-use App\Models\Place;
 use App\Models\TimelineEntry;
 use App\Models\User;
+use App\Services\Collaboration\ChangeMode;
+use App\Services\Collaboration\ChangeRequests;
 use App\Services\History\TimelineBuilder;
 use App\Services\Privacy\MemberPresenter;
 use App\Services\Privacy\MemberPrivacy;
 use App\Support\FormOptions;
-use App\Support\FuzzyDate\FuzzyDate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -72,11 +71,18 @@ class TimelineController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $entry = new TimelineEntry;
-        $entry->family_id = $family->id;
-        $entry->created_by = $user->id;
+        if (app(ChangeMode::class)->forEdit($user, $family) === ChangeMode::PROPOSE) {
+            /** @var array<string, mixed> $data */
+            $data = $request->validated();
+            unset($data['visibility']);
+            app(ChangeRequests::class)->proposeTimelineEntry($family, $user, $data);
 
-        $this->save($entry, $family, $user, $request);
+            Inertia::flash('toast', ['type' => 'success', 'message' => __('Sent for approval. It will appear on the timeline once a reviewer approves it.')]);
+
+            return back();
+        }
+
+        $this->save(new TimelineEntry, $family, $user, $request);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Added to the timeline.')]);
 
@@ -112,43 +118,8 @@ class TimelineController extends Controller
     {
         /** @var array<string, mixed> $data */
         $data = $request->validated();
-        $viewer = app(MemberPrivacy::class)->viewer($user, $family);
 
-        DB::transaction(function () use ($entry, $family, $user, $data, $viewer): void {
-            $entry->title = trim((string) $data['title']);
-            $entry->category = TimelineCategory::from((string) $data['category']);
-            $entry->description = isset($data['description']) && trim((string) $data['description']) !== '' ? trim((string) $data['description']) : null;
-            $entry->event = FuzzyDate::fromInput(is_array($data['event'] ?? null) ? $data['event'] : null);
-            $entry->place_id = Place::resolve($family, isset($data['place']) ? (string) $data['place'] : null)?->id;
-            $entry->updated_by = $user->id;
-
-            // Nobody can hide an entry at a level they could not then see themselves.
-            if (isset($data['visibility']) && in_array($data['visibility'], $viewer->visibleLevels(), true)) {
-                $entry->visibility = Visibility::from((string) $data['visibility']);
-            }
-
-            $entry->save();
-
-            /** @var list<string> $ids */
-            $ids = $data['participant_ids'] ?? [];
-
-            // People the editor may not see cannot be attached, and ones already attached stay.
-            $visible = FamilyMember::query()->inFamily($family)->whereIn('id', $ids)->get()
-                ->filter(fn (FamilyMember $member): bool => $viewer->canView($member))
-                ->modelKeys();
-
-            $hidden = $entry->participants()->get()
-                ->reject(fn (FamilyMember $member): bool => $viewer->canView($member))
-                ->modelKeys();
-
-            $sync = [];
-
-            foreach ([...$visible, ...$hidden] as $id) {
-                $sync[$id] = ['family_id' => $family->id];
-            }
-
-            $entry->participants()->sync($sync);
-        });
+        app(SaveTimelineEntry::class)->handle($entry, $family, $user, $data, app(MemberPrivacy::class)->viewer($user, $family));
     }
 
     private function year(Request $request, string $key): ?int

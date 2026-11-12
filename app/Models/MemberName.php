@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\NameType;
+use App\Services\Audit\HasHistory;
+use App\Services\Audit\RecordsHistory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,9 +22,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-class MemberName extends Model
+class MemberName extends Model implements HasHistory
 {
-    use HasUuids;
+    use HasUuids, RecordsHistory;
 
     /**
      * @return array<string, string>
@@ -36,5 +38,16 @@ class MemberName extends Model
     public function member(): BelongsTo
     {
         return $this->belongsTo(FamilyMember::class, 'member_id');
+    }
+
+    public function historyNoun(): string
+    {
+        return 'member_name';
+    }
+
+    /** Names are audited but too minor for the activity feed. */
+    public function historySummary(string $event): ?string
+    {
+        return null;
     }
 }

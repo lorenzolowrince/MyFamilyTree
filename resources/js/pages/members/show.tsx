@@ -22,6 +22,7 @@ import {
     update as updateRelationship,
 } from '@/routes/families/relationships';
 import type {
+    ChangeModeValue,
     FamilyRef,
     GenealogyOptions,
     MemberNameItem,
@@ -48,7 +49,15 @@ type Props = {
         delete: boolean;
         addPeople: boolean;
         manageRelationships: boolean;
+        editRelationships: boolean;
+        editNames: boolean;
+        editRestricted: boolean;
         setRoot: boolean;
+    };
+    changeMode: {
+        edit: ChangeModeValue;
+        add: ChangeModeValue;
+        delete: ChangeModeValue;
     };
     options: GenealogyOptions;
     errors?: Partial<Record<string, string>>;
@@ -209,6 +218,7 @@ export default function MemberShow({
     isRoot,
     linkedToMe,
     can,
+    changeMode,
     options,
     errors = {},
 }: Props) {
@@ -294,6 +304,14 @@ export default function MemberShow({
                         )}
                     </div>
                 </header>
+
+                {(changeMode.edit === 'propose' ||
+                    changeMode.add === 'propose') && (
+                    <p className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
+                        Your changes here are sent for approval before they
+                        appear in the tree.
+                    </p>
+                )}
 
                 {member.sensitive_hidden && (
                     <p className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
@@ -404,7 +422,7 @@ export default function MemberShow({
                                                       )
                                             }
                                         />
-                                        {can.manageRelationships &&
+                                        {can.editRelationships &&
                                             !person.hidden && (
                                                 <RelationshipControls
                                                     family={family}
@@ -442,7 +460,7 @@ export default function MemberShow({
                                                 .filter(Boolean)
                                                 .join(' ')}
                                         />
-                                        {can.manageRelationships &&
+                                        {can.editRelationships &&
                                             !person.hidden && (
                                                 <RelationshipControls
                                                     family={family}
@@ -487,7 +505,7 @@ export default function MemberShow({
                                                     .join(' · ') || null
                                             }
                                         />
-                                        {can.manageRelationships &&
+                                        {can.editRelationships &&
                                             !person.hidden && (
                                                 <RelationshipControls
                                                     family={family}
@@ -527,7 +545,7 @@ export default function MemberShow({
                     memberId={member.id}
                     names={names}
                     types={nameTypes}
-                    canEdit={can.update}
+                    canEdit={can.editNames}
                 />
 
                 {timeline.length > 0 && (
@@ -590,7 +608,9 @@ export default function MemberShow({
                                 }}
                             >
                                 <Trash2 aria-hidden="true" />
-                                Remove from tree
+                                {changeMode.delete === 'propose'
+                                    ? 'Propose removal'
+                                    : 'Remove from tree'}
                             </Button>
                         )}
                         <Button variant="ghost" size="sm" asChild>
@@ -607,7 +627,7 @@ export default function MemberShow({
                     family={family}
                     member={member}
                     options={options}
-                    canEditRestricted={can.manageRelationships}
+                    canEditRestricted={can.editRestricted}
                     onClose={() => setEditing(false)}
                 />
             )}

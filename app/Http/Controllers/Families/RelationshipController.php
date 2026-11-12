@@ -48,7 +48,7 @@ class RelationshipController extends Controller
     /** The role must allow it, and both people must be visible to this person. */
     private function authorizeFor(Family $family, FamilyRelationship $relationship): void
     {
-        $this->authorize('manageRelationships', [FamilyMember::class, $family]);
+        $this->authorize('manageRelationshipsDirectly', [FamilyMember::class, $family]);
 
         foreach ([$relationship->personA, $relationship->personB] as $person) {
             abort_if($person === null, 404);

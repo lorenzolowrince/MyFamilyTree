@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Listeners\RecordLoginActivity;
 use App\Models\User;
+use App\Services\Audit\HistoryRecorder;
 use App\Services\Authorization\FamilyAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -26,6 +27,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // Scoped, not singleton: its per-request memory must not leak between queued jobs.
         $this->app->scoped(FamilyAccess::class);
+
+        // One recorder per request, so its audit rows share a request id.
+        $this->app->scoped(HistoryRecorder::class);
     }
 
     /**

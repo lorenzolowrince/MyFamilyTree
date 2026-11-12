@@ -3,6 +3,7 @@
 use App\Http\Controllers\Account\ReactivationController;
 use App\Http\Controllers\Auth\SocialLoginController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Families\InvitationController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
@@ -21,6 +22,12 @@ Route::middleware('throttle:social-login')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::get('account/reactivate', [ReactivationController::class, 'show'])->name('reactivation.show');
     Route::post('account/reactivate', [ReactivationController::class, 'store'])->name('reactivation.store');
+});
+
+// The page behind an invitation link. Viewing needs no account; accepting needs a verified one.
+Route::middleware('throttle:30,1')->group(function () {
+    Route::get('invitations/{token}', [InvitationController::class, 'show'])->name('invitations.show');
+    Route::post('invitations/{token}', [InvitationController::class, 'accept'])->middleware(['auth', 'verified'])->name('invitations.accept');
 });
 
 require __DIR__.'/families.php';

@@ -28,6 +28,12 @@ export function NavMain({ items }: { items: NavItem[] }) {
                                     <span>{item.title}</span>
                                 </Link>
                             </SidebarMenuButton>
+                            {item.badge !== undefined && item.badge > 0 && (
+                                <SidebarMenuBadge>
+                                    {item.badge}
+                                    <span className="sr-only"> waiting</span>
+                                </SidebarMenuBadge>
+                            )}
                         </SidebarMenuItem>
                     ) : (
                         <SidebarMenuItem key={item.title}>

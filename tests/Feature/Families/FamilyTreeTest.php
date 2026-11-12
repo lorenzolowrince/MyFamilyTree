@@ -5,6 +5,7 @@ use App\Enums\LivingStatus;
 use App\Enums\MembershipStatus;
 use App\Enums\Visibility;
 use App\Http\Middleware\EnsureTwoFactorEnabled;
+use App\Models\ChangeRequest;
 use App\Models\Family;
 use App\Models\FamilyMember;
 use App\Models\FamilyRelationship;
@@ -169,15 +170,16 @@ test('a suspended member of the family is treated as an outsider', function () {
 
 // --- What each role may do -------------------------------------------------------------
 
+// How each role's changes are handled: applied at once, sent for approval, or refused.
 dataset('roles', [
-    'owner' => [FamilyRole::Owner, true, true, true],
-    'admin' => [FamilyRole::Admin, true, true, true],
-    'editor' => [FamilyRole::Editor, true, false, false],
-    'contributor' => [FamilyRole::Contributor, false, false, false],
-    'viewer' => [FamilyRole::Viewer, false, false, false],
+    'owner' => [FamilyRole::Owner, 'direct', 'direct', true],
+    'admin' => [FamilyRole::Admin, 'direct', 'direct', true],
+    'editor' => [FamilyRole::Editor, 'direct', 'propose', false],
+    'contributor' => [FamilyRole::Contributor, 'propose', 'deny', false],
+    'viewer' => [FamilyRole::Viewer, 'deny', 'deny', false],
 ]);
 
-test('roles: view, add, edit, link, delete and settings', function (FamilyRole $role, bool $canEdit, bool $canDelete, bool $canManageFamily) {
+test('roles: view, add, edit, link, delete and settings', function (FamilyRole $role, string $edit, string $delete, bool $canManageFamily) {
     [$family] = treeFamily();
     $ahmad = person($family, 'Ahmad', ['living_status' => LivingStatus::Deceased]);
     $siti = person($family, 'Siti', ['living_status' => LivingStatus::Deceased]);
@@ -190,22 +192,30 @@ test('roles: view, add, edit, link, delete and settings', function (FamilyRole $
     $this->get(route('families.members.index', $family))->assertOk();
     $this->get(route('families.members.show', [$family, $ahmad]))->assertOk();
 
+    // Allowed (directly or as a proposal) redirects; refused is 403.
     $expect = fn ($response, bool $allowed) => $allowed ? $response->assertRedirect() : $response->assertForbidden();
 
-    $expect($this->post(route('families.members.store', $family), ['full_name' => 'New Person']), $canEdit);
-    $expect($this->patch(route('families.members.update', [$family, $ahmad]), ['full_name' => 'Ahmad bin Ali', 'version' => 1]), $canEdit);
-    $expect($this->post(route('families.members.relatives.store', [$family, $ahmad]), ['kind' => 'child', 'member' => ['full_name' => 'New Child']]), $canEdit);
-    $expect($this->patch(route('families.relationships.update', [$family, $relationship]), ['subtype' => 'adoptive']), $canEdit);
+    $expect($this->post(route('families.members.store', $family), ['full_name' => 'New Person']), $edit !== 'deny');
+    $expect($this->patch(route('families.members.update', [$family, $ahmad]), ['full_name' => 'Ahmad bin Ali', 'version' => 1]), $edit !== 'deny');
+    $expect($this->post(route('families.members.relatives.store', [$family, $ahmad]), ['kind' => 'child', 'member' => ['full_name' => 'New Child']]), $edit !== 'deny');
+    // Changing or removing an existing link has no approval path.
+    $expect($this->patch(route('families.relationships.update', [$family, $relationship]), ['subtype' => 'adoptive']), $edit === 'direct');
     $expect($this->patch(route('families.update', $family), ['name' => 'Renamed Family']), $canManageFamily);
     $expect($this->post(route('families.members.root', [$family, $siti])), $canManageFamily);
-    $expect($this->delete(route('families.relationships.destroy', [$family, $relationship])), $canEdit);
-    $expect($this->delete(route('families.members.destroy', [$family, $siti])), $canDelete);
+    $expect($this->delete(route('families.relationships.destroy', [$family, $relationship])), $edit === 'direct');
+    $expect($this->delete(route('families.members.destroy', [$family, $siti])), $delete !== 'deny');
 
-    expect(FamilyMember::query()->where('full_name', 'New Person')->exists())->toBe($canEdit)
-        ->and(FamilyMember::query()->where('full_name', 'New Child')->exists())->toBe($canEdit)
-        ->and($ahmad->refresh()->full_name)->toBe($canEdit ? 'Ahmad bin Ali' : 'Ahmad')
+    // Only direct changes touch the tree.
+    expect(FamilyMember::query()->where('full_name', 'New Person')->exists())->toBe($edit === 'direct')
+        ->and(FamilyMember::query()->where('full_name', 'New Child')->exists())->toBe($edit === 'direct')
+        ->and($ahmad->refresh()->full_name)->toBe($edit === 'direct' ? 'Ahmad bin Ali' : 'Ahmad')
         ->and($family->refresh()->name === 'Renamed Family')->toBe($canManageFamily)
-        ->and(FamilyMember::query()->whereKey($siti->id)->exists())->toBe(! $canDelete);
+        ->and(FamilyMember::query()->whereKey($siti->id)->exists())->toBe($delete !== 'direct');
+
+    // Proposals wait in the queue instead.
+    $proposals = ChangeRequest::query()->where('status', 'pending')->count();
+
+    expect($proposals)->toBe(($edit === 'propose' ? 3 : 0) + ($delete === 'propose' ? 1 : 0));
 })->with('roles');
 
 test('a contributor can edit their own linked profile, but not research notes or visibility', function () {
@@ -221,8 +231,11 @@ test('a contributor can edit their own linked profile, but not research notes or
         'full_name' => 'My Real Name', 'version' => 1, 'notes' => 'Overwritten', 'visibility' => 'private',
     ])->assertRedirect();
 
+    // Someone else's profile: a proposal, not a change.
     $this->patch(route('families.members.update', [$family, $someoneElse]), ['full_name' => 'Hacked', 'version' => 1])
-        ->assertForbidden();
+        ->assertRedirect();
+
+    expect(ChangeRequest::query()->where('target_id', $someoneElse->id)->where('status', 'pending')->count())->toBe(1);
 
     expect($me->refresh()->full_name)->toBe('My Real Name')
         ->and($me->notes)->toBe('Editors only')

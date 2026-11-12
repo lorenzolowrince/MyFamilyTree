@@ -7,6 +7,8 @@ export type FamilyRef = {
 
 export type CurrentFamily = FamilyRef & {
     role: string;
+    /** Proposals waiting for this person to review. */
+    pendingChanges: number;
     /** A hint for showing or hiding buttons. The server authorises every request. */
     permissions: string[];
 };
@@ -236,4 +238,60 @@ export type FamilyOverview = {
         all_day: boolean;
         location: string | null;
     }[];
+    /** Null when this person may not read the activity feed. */
+    activity:
+        | {
+              id: string;
+              summary: string;
+              actor: string | null;
+              created_at: string;
+          }[]
+        | null;
 };
+
+// --- Collaboration (people, proposals, history) ------------------------------------
+
+export type FamilyPerson = {
+    id: string;
+    name: string | null;
+    email: string | null;
+    role: string;
+    role_label: string;
+    status: string;
+    joined_at: string | null;
+    linked_member: { id: string; name: string | null } | null;
+    is_me: boolean;
+    can: { manage: boolean; link: boolean };
+};
+
+export type InvitationItem = {
+    id: string;
+    email: string;
+    role_label: string;
+    state: 'pending' | 'accepted' | 'revoked' | 'expired';
+    expires_at: string;
+    created_at: string | null;
+};
+
+export type ChangeItem = {
+    id: string;
+    kind: string;
+    summary: string;
+    status: 'pending' | 'approved' | 'rejected' | 'withdrawn' | 'superseded';
+    submitted_by: string;
+    is_mine: boolean;
+    created_at: string | null;
+    reviewer: string | null;
+    reviewed_at: string | null;
+    review_note: string | null;
+    /** Field by field: the current value and the proposed one. */
+    rows: { label: string; old: string | null; new: string | null }[];
+    /** The record was changed after this proposal was made. */
+    conflict: boolean;
+    /** The record this proposal is about no longer exists. */
+    missing: boolean;
+    target_id: string | null;
+    can: { review: boolean; withdraw: boolean };
+};
+
+export type ChangeModeValue = 'direct' | 'propose' | 'deny';

@@ -1,9 +1,10 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Cake, CalendarDays, Heart, UserPlus } from 'lucide-react';
+import { Cake, CalendarDays, Heart, History, UserPlus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { MemberAvatar } from '@/components/members/member-avatar';
 import { formatDate, formatDateTime } from '@/lib/dates';
 import { tree } from '@/routes/families';
+import { index as activityIndex } from '@/routes/families/activity';
 import { index as eventsIndex } from '@/routes/families/events';
 import {
     index as membersIndex,
@@ -228,6 +229,53 @@ export function FamilyOverview({ overview }: { overview: Overview }) {
                         </li>
                     ))}
                 </Widget>
+
+                {overview.activity && (
+                    <div className="md:col-span-2">
+                        <Widget
+                            title="Recent activity"
+                            icon={
+                                <History
+                                    className="size-4"
+                                    aria-hidden="true"
+                                />
+                            }
+                            empty="Nothing has changed yet."
+                            count={overview.activity.length}
+                        >
+                            {overview.activity.map((item) => (
+                                <li
+                                    key={item.id}
+                                    className="flex flex-wrap items-baseline justify-between gap-x-4"
+                                >
+                                    <span className="text-sm">
+                                        <span className="font-medium">
+                                            {item.actor ?? 'The system'}
+                                        </span>{' '}
+                                        {item.summary}
+                                    </span>
+                                    <time
+                                        dateTime={item.created_at}
+                                        className="text-xs whitespace-nowrap text-muted-foreground"
+                                    >
+                                        {formatDateTime(
+                                            item.created_at,
+                                            auth.user.timezone,
+                                        )}
+                                    </time>
+                                </li>
+                            ))}
+                            <li>
+                                <Link
+                                    href={activityIndex(family.slug)}
+                                    className="text-sm underline underline-offset-4"
+                                >
+                                    All activity
+                                </Link>
+                            </li>
+                        </Widget>
+                    </div>
+                )}
             </div>
         </section>
     );

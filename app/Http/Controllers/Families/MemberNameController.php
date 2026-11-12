@@ -17,7 +17,7 @@ class MemberNameController extends Controller
 {
     public function store(Request $request, Family $family, FamilyMember $member): RedirectResponse
     {
-        $this->authorize('update', $member);
+        $this->authorize('updateDirectly', $member);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:200', 'not_regex:/[\p{Cc}<>]/u'],
@@ -42,7 +42,7 @@ class MemberNameController extends Controller
 
     public function destroy(Family $family, FamilyMember $member, MemberName $name): RedirectResponse
     {
-        $this->authorize('update', $member);
+        $this->authorize('updateDirectly', $member);
 
         $name->delete();
 

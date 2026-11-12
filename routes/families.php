@@ -1,10 +1,13 @@
 <?php
 
+use App\Http\Controllers\Families\ActivityController;
+use App\Http\Controllers\Families\ChangeRequestController;
 use App\Http\Controllers\Families\CoverController;
 use App\Http\Controllers\Families\EventController;
 use App\Http\Controllers\Families\FamilyController;
 use App\Http\Controllers\Families\MemberController;
 use App\Http\Controllers\Families\MemberNameController;
+use App\Http\Controllers\Families\PeopleController;
 use App\Http\Controllers\Families\RelationshipController;
 use App\Http\Controllers\Families\RelativeController;
 use App\Http\Controllers\Families\TimelineController;
@@ -62,6 +65,25 @@ Route::middleware(['auth', 'verified', EnsureTwoFactorEnabled::class])->group(fu
             Route::patch('events/{event}', [EventController::class, 'update'])->whereUuid('event')->name('events.update');
             Route::delete('events/{event}', [EventController::class, 'destroy'])->whereUuid('event')->name('events.destroy');
             Route::post('events/{event}/timeline', [EventController::class, 'convert'])->whereUuid('event')->name('events.convert');
+
+            // People with access, invitations, roles.
+            Route::get('people', [PeopleController::class, 'index'])->name('people.index');
+            Route::post('people/invitations', [PeopleController::class, 'invite'])->middleware('throttle:30,60')->name('people.invite');
+            Route::delete('people/invitations/{invitation}', [PeopleController::class, 'revokeInvitation'])->whereUuid('invitation')->name('people.invitations.destroy');
+            Route::patch('people/{membership}/role', [PeopleController::class, 'updateRole'])->whereUuid('membership')->name('people.role');
+            Route::patch('people/{membership}/link', [PeopleController::class, 'link'])->whereUuid('membership')->name('people.link');
+            Route::post('people/{membership}/transfer', [PeopleController::class, 'transfer'])->whereUuid('membership')->middleware('throttle:6,1')->name('people.transfer');
+            Route::delete('people/{membership}', [PeopleController::class, 'destroy'])->whereUuid('membership')->name('people.destroy');
+
+            // Proposals waiting for approval.
+            Route::get('changes', [ChangeRequestController::class, 'index'])->name('changes.index');
+            Route::post('changes/{change}/approve', [ChangeRequestController::class, 'approve'])->whereUuid('change')->name('changes.approve');
+            Route::post('changes/{change}/reject', [ChangeRequestController::class, 'reject'])->whereUuid('change')->name('changes.reject');
+            Route::delete('changes/{change}', [ChangeRequestController::class, 'withdraw'])->whereUuid('change')->name('changes.withdraw');
+
+            // History of changes.
+            Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
+            Route::get('activity/audit', [ActivityController::class, 'audit'])->name('activity.audit');
 
             Route::patch('relationships/{relationship}', [RelationshipController::class, 'update'])->whereUuid('relationship')->name('relationships.update');
             Route::delete('relationships/{relationship}', [RelationshipController::class, 'destroy'])->whereUuid('relationship')->name('relationships.destroy');
