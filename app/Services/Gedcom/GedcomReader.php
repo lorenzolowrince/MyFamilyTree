@@ -141,7 +141,7 @@ class GedcomReader
             }
 
             if ($type === 'MAIDEN' && ! isset($data['maiden_name'])) {
-                $data['maiden_name'] = $value;
+                $data['maiden_name'] = mb_substr($value, 0, 200);
 
                 continue;
             }
@@ -151,9 +151,9 @@ class GedcomReader
                 $primary = true;
                 $data['full_name'] = $value;
                 $surname = preg_match('~/([^/]*)/~u', $name['value'], $match) === 1 ? self::clean($match[1]) : null;
-                $data['surname'] = GedcomParser::value($name, 'SURN') ?? ($surname === '' ? null : $surname);
-                $data['given_names'] = GedcomParser::value($name, 'GIVN');
-                $data['nickname'] = GedcomParser::value($name, 'NICK');
+                $data['surname'] = self::limit(GedcomParser::value($name, 'SURN') ?? ($surname === '' ? null : $surname), 200);
+                $data['given_names'] = self::limit(GedcomParser::value($name, 'GIVN'), 200);
+                $data['nickname'] = self::limit(GedcomParser::value($name, 'NICK'), 200);
 
                 continue;
             }
@@ -162,8 +162,8 @@ class GedcomReader
 
             $others[] = [
                 'type' => in_array($phrase, ['religious', 'romanised'], true) ? $phrase : (self::NAME_TYPES[$type] ?? 'other'),
-                'name' => $value,
-                'notes' => GedcomParser::value($name, 'NOTE'),
+                'name' => mb_substr($value, 0, 200),
+                'notes' => self::limit(GedcomParser::value($name, 'NOTE'), 1000),
             ];
         }
 
@@ -178,13 +178,13 @@ class GedcomReader
 
         if ($birth !== null) {
             $data['birth'] = self::date($birth);
-            $data['birth_place'] = GedcomParser::value($birth, 'PLAC');
+            $data['birth_place'] = self::place($birth);
         }
 
         if ($death !== null) {
             $data['living_status'] = 'deceased';
             $data['death'] = self::date($death);
-            $data['death_place'] = GedcomParser::value($death, 'PLAC');
+            $data['death_place'] = self::place($death);
         } elseif (GedcomParser::child($record, 'BURI') !== null || GedcomParser::child($record, 'CREM') !== null) {
             $data['living_status'] = 'deceased';
         } elseif (strtoupper((string) GedcomParser::value($record, '_LIVING')) === 'Y') {
@@ -195,7 +195,7 @@ class GedcomReader
 
         $data = [
             ...$data,
-            'hometown' => $residence === null ? null : GedcomParser::value($residence, 'PLAC'),
+            'hometown' => $residence === null ? null : self::place($residence),
             'occupation' => self::limit(GedcomParser::value($record, 'OCCU'), 200),
             'education' => self::limit(GedcomParser::value($record, 'EDUC'), 200),
             'nationality' => self::limit(GedcomParser::value($record, 'NATI'), 100),
@@ -267,7 +267,7 @@ class GedcomReader
             'status' => $status,
             'start' => $start === null ? null : self::date($start),
             'end' => $end === null ? null : self::date($end),
-            'place' => $start === null ? null : GedcomParser::value($start, 'PLAC'),
+            'place' => $start === null ? null : self::place($start),
             'notes' => self::limit(GedcomParser::value($family, 'NOTE'), 5000),
         ];
     }
@@ -314,6 +314,14 @@ class GedcomReader
         $date = GedcomParser::child($event, 'DATE');
 
         return GedcomDate::read($date['value'] ?? null, $date === null ? null : GedcomParser::value($date, 'PHRASE'));
+    }
+
+    /**
+     * @param  array<string, mixed>  $event
+     */
+    private static function place(array $event): ?string
+    {
+        return self::limit(GedcomParser::value($event, 'PLAC'), 200);
     }
 
     private static function clean(string $value): string

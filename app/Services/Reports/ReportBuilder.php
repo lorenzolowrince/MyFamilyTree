@@ -58,7 +58,7 @@ class ReportBuilder
     }
 
     /**
-     * @return array{html: string, footer: string, landscape: bool, paper: 'A4'|'A3'}
+     * @return array{html: string, footer: string, role: string, landscape: bool, paper: 'A4'|'A3'}
      *
      * @throws DomainException with a reason for the requester when the report cannot be made
      */
@@ -101,6 +101,7 @@ class ReportBuilder
         return [
             'html' => view("reports.{$report->type}", [...$shared, ...$data])->render(),
             'footer' => view('reports.footer', $shared)->render(),
+            'role' => $this->viewer->role->value,
             'landscape' => $report->type === 'tree',
             'paper' => $report->type === 'tree' && ($data['chart']['width'] ?? 0) > 1500 ? 'A3' : 'A4',
         ];

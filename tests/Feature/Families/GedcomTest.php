@@ -22,9 +22,11 @@ uses(RefreshDatabase::class);
 
 beforeEach(fn () => Storage::fake('local'));
 
+/** The complete export (the route asks for the password again; taken as just confirmed here). */
 function exportGedcom($test, Family $family, User $as): string
 {
-    return $test->actingAs($as)->get(route('families.gedcom.export', $family))->assertOk()->streamedContent();
+    return $test->actingAs($as)->withSession(['auth.password_confirmed_at' => time()])
+        ->get(route('families.gedcom.export.complete', $family))->assertOk()->streamedContent();
 }
 
 /**
@@ -265,6 +267,106 @@ test('exporting a tree and importing it into an empty family gives the same tree
     expect(exportGedcom($this, $target, $owner))->toBe($gedcom);
 });
 
+test('the export for sharing leaves out living people and private records; the complete one needs the password', function () {
+    $this->seed(DemoFamilySeeder::class);
+
+    $family = Family::query()->where('name', DemoFamilySeeder::FAMILY_NAME)->firstOrFail();
+    $owner = User::query()->findOrFail($family->owner_id);
+    $owner->forceFill(['two_factor_secret' => encrypt('secret'), 'two_factor_confirmed_at' => now()])->save();
+
+    // An adopted living person, and a dead person whose record is restricted.
+    FamilyMember::query()->where('family_id', $family->id)->where('full_name', 'Sarah binti Majin')->update(['visibility' => 'restricted', 'occupation' => 'Midwife']);
+
+    $shared = $this->actingAs($owner)->get(route('families.gedcom.export', $family))->assertOk();
+    $gedcom = $shared->streamedContent();
+
+    expect($shared->headers->get('Content-Disposition'))->not->toContain('complete')
+        // Everyone is still in the file, so the tree keeps its shape…
+        ->and(substr_count($gedcom, ' INDI'))->toBe(15)
+        ->and(substr_count($gedcom, ' FAM'."\n"))->toBe(substr_count(exportGedcom($this, $family, $owner), ' FAM'."\n"))
+        // …the dead keep their details…
+        ->and($gedcom)->toContain('1 NAME Gimbang Lidau')->toContain('1 NAME Lidau bin Gunsalam')->toContain('2 DATE ABT 1898')
+        // …the living and the private have none: no name, no dates, no places.
+        ->and($gedcom)->not->toContain('Daniel')->not->toContain('Adam')->not->toContain('Noah')->not->toContain('Anna')
+        ->not->toContain('Sarah')->not->toContain('Midwife')
+        ->not->toContain('1952')->not->toContain('1980')->not->toContain('Kota Kinabalu')
+        // Not who was adopted, nor a living couple's marriage or a private person's divorce.
+        ->not->toContain('adoptive')->not->toContain('ADOPTED')->not->toContain('1978')->not->toContain('divorced')->not->toContain('1 DIV')
+        // Noah is living too, but his record is private, which comes first.
+        ->and(substr_count($gedcom, '1 NAME Living'."\n"))->toBe(7)
+        ->and(substr_count($gedcom, '1 NAME Private'."\n"))->toBe(2)
+        ->and($gedcom)->toContain('1 NOTE Living people and private records are included without their names or details.');
+
+    // A marriage between two people who have died is history and stays.
+    expect($gedcom)->toContain('2 DATE 1923');
+
+    // Both downloads so far are on record, each with its kind.
+    expect(DB::table('audit_logs')->where('action', 'gedcom.exported')->where('new_values->kind', 'for sharing')->count())->toBe(1)
+        ->and(DB::table('audit_logs')->where('action', 'gedcom.exported')->where('new_values->kind', 'complete')->count())->toBe(1);
+
+    // The complete file: only after the password has been given again.
+    $this->flushSession();
+    $this->actingAs($owner)->get(route('families.gedcom.export.complete', $family))->assertRedirect(route('password.confirm'));
+
+    $complete = $this->withSession(['auth.password_confirmed_at' => time()])->get(route('families.gedcom.export.complete', $family))->assertOk();
+
+    expect($complete->headers->get('Content-Disposition'))->toContain('-complete-')
+        ->and($complete->streamedContent())->toContain('Daniel')->toContain('Midwife')->toContain('_MREL adoptive')
+        ->and(DB::table('audit_logs')->where('action', 'gedcom.exported')->latest('id')->value('new_values'))->toContain('complete');
+
+    // It imports like any other file: the withheld people arrive as "Living" and "Private".
+    $target = Family::factory()->create(['owner_id' => $owner->id]);
+    $import = uploadGedcom($this, $target, $owner, $gedcom);
+    $this->post(route('families.gedcom.confirm', [$target, $import]), ['decisions' => []])->assertSessionHasNoErrors();
+
+    expect($import->refresh()->result)->toMatchArray(['created' => 15, 'parent_links' => 20, 'problems' => []])
+        ->and(FamilyMember::query()->where('family_id', $target->id)->where('full_name', 'Living')->count())->toBe(7)
+        ->and(FamilyMember::query()->where('family_id', $target->id)->where('visibility', 'private')->count())->toBe(9);
+});
+
+test('an oversized or hostile file cannot exhaust the server or the database', function () {
+    [$family, $owner] = treeFamily();
+
+    // More lines than are ever read.
+    $long = "0 HEAD\n".str_repeat("0 @I1@ INDI\n1 NAME A /B/\n1 SEX M\n", intdiv(GedcomParser::MAX_LINES, 3) + 10)."0 TRLR\n";
+    expect(fn () => (new GedcomParser)->parse($long))->toThrow(DomainException::class, 'at most');
+
+    // Enormous values: every field that reaches the database has a length.
+    $huge = str_repeat('A', 300000);
+    $document = app(GedcomReader::class)->read(
+        "0 HEAD\n0 @I1@ INDI\n1 NAME {$huge} /{$huge}/\n2 GIVN {$huge}\n2 NICK {$huge}\n1 NAME {$huge}\n2 TYPE MAIDEN\n1 NAME {$huge}\n2 TYPE AKA\n3 NOTE {$huge}\n"
+        ."1 BIRT\n2 DATE BET ".str_repeat('1 ', 200000)."AND\n3 PHRASE {$huge}\n2 PLAC {$huge}\n1 DEAT\n2 DATE {$huge}\n1 RESI\n2 PLAC {$huge}\n1 OCCU {$huge}\n1 NOTE {$huge}\n"
+        ."0 @I2@ INDI\n1 NAME B\n0 @F1@ FAM\n1 HUSB @I1@\n1 WIFE @I2@\n1 MARR\n2 DATE {$huge}\n2 PLAC {$huge}\n1 NOTE {$huge}\n0 TRLR\n",
+    );
+
+    $data = $document['people']['@I1@']['data'];
+    $lengths = fn (array $values): int => max(array_map(fn ($value) => is_string($value) ? mb_strlen($value) : 0, $values));
+
+    expect($lengths(array_diff_key($data, ['biography' => true])))->toBeLessThanOrEqual(200)
+        ->and(mb_strlen($data['biography']))->toBeLessThanOrEqual(20000)
+        ->and($lengths($data['birth']))->toBeLessThanOrEqual(200)
+        ->and($lengths($data['death']))->toBeLessThanOrEqual(200)
+        ->and($lengths($document['people']['@I1@']['names'][0]))->toBeLessThanOrEqual(1000)
+        ->and($lengths(array_diff_key($document['partnerships'][0]['details'], ['notes' => true, 'start' => true, 'end' => true])))->toBeLessThanOrEqual(200)
+        ->and($lengths($document['partnerships'][0]['details']['start']))->toBeLessThanOrEqual(200);
+
+    // Through the whole import: accepted, shortened, and the tree is intact.
+    $import = uploadGedcom($this, $family, $owner, "0 HEAD\n0 @I1@ INDI\n1 NAME {$huge} /{$huge}/\n1 BIRT\n2 DATE {$huge}\n2 PLAC {$huge}\n0 TRLR\n");
+    $this->post(route('families.gedcom.confirm', [$family, $import]), ['decisions' => []])->assertSessionHasNoErrors();
+
+    $member = FamilyMember::query()->where('family_id', $family->id)->sole();
+
+    expect($import->refresh()->status)->toBe('completed')
+        ->and(mb_strlen($member->full_name))->toBe(200)
+        ->and(mb_strlen((string) $member->birth->text))->toBe(200)
+        ->and(mb_strlen((string) $member->birthPlace?->name))->toBe(200);
+
+    // Too many lines, through the upload: refused with the reason, nothing imported.
+    $refused = uploadGedcom($this, $family, $owner, $long);
+
+    expect($refused->status)->toBe('failed')->and($refused->error)->toContain('at most');
+});
+
 // --- Import into a tree that already has people ----------------------------------------
 
 test('people already in the tree are offered as matches; merging never overwrites', function () {
@@ -441,18 +543,22 @@ test('export and import are for the owner and administrators only', function () 
         $this->actingAs(memberWithRole($family, $role));
         $this->get(route('families.gedcom.index', $family))->assertForbidden();
         $this->get(route('families.gedcom.export', $family))->assertForbidden();
+        $this->withSession(['auth.password_confirmed_at' => time()])->get(route('families.gedcom.export.complete', $family))->assertForbidden();
         $this->post(route('families.gedcom.store', $family), ['file' => $file()])->assertForbidden();
         $this->get(route('families.gedcom.show', [$family, $import]))->assertForbidden();
         $this->post(route('families.gedcom.confirm', [$family, $import]), ['decisions' => []])->assertForbidden();
         $this->delete(route('families.gedcom.cancel', [$family, $import]))->assertForbidden();
     }
 
+    $this->flushSession();
     $this->actingAs(memberWithRole($family, FamilyRole::Admin));
     $this->get(route('families.gedcom.export', $family))->assertOk()->assertHeader('Content-Type', 'text/plain; charset=UTF-8');
+    $this->get(route('families.gedcom.export.complete', $family))->assertRedirect(route('password.confirm'));
 
     [$other, $outsider] = treeFamily();
     $this->actingAs($outsider);
     $this->get(route('families.gedcom.export', $family))->assertNotFound();
+    $this->withSession(['auth.password_confirmed_at' => time()])->get(route('families.gedcom.export.complete', $family))->assertNotFound();
     $this->post(route('families.gedcom.store', $family), ['file' => $file()])->assertNotFound();
     // Another family's import cannot be reached through one's own family.
     $this->get(route('families.gedcom.show', [$other, $import]))->assertNotFound();

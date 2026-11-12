@@ -56,7 +56,14 @@ class GenerateReport implements ShouldQueue
 
         $library->disk()->put($key, $bytes);
 
-        $report->forceFill(['status' => 'ready', 'storage_key' => $key, 'size_bytes' => strlen($bytes), 'error' => null])->save();
+        $report->forceFill([
+            'status' => 'ready',
+            'storage_key' => $key,
+            'size_bytes' => strlen($bytes),
+            'error' => null,
+            // What the requester could see when this was printed (ReportController::usable).
+            'parameters' => [...$report->parameters, 'made_as' => $built['role']],
+        ])->save();
     }
 
     public function failed(?Throwable $exception): void

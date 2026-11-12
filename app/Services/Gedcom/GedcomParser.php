@@ -2,6 +2,8 @@
 
 namespace App\Services\Gedcom;
 
+use DomainException;
+
 /**
  * Reads GEDCOM text into a tree of lines. Tolerant on purpose: files written by other
  * programs are often not quite standard, so a line that cannot be read becomes a warning
@@ -14,7 +16,18 @@ class GedcomParser
     public const MAX_WARNINGS = 200;
 
     /**
+     * Most lines read from one file. Each line costs several hundred bytes of memory once
+     * parsed, so this, not the file size, is what bounds the memory of an import.
+     */
+    public const MAX_LINES = 300_000;
+
+    /** Longest value kept for one line and its continuation lines together. */
+    public const MAX_VALUE_LENGTH = 100_000;
+
+    /**
      * @return array{records: list<Node>, warnings: list<string>}
+     *
+     * @throws DomainException when the file is too large to read safely
      */
     public function parse(string $text): array
     {
@@ -27,7 +40,16 @@ class GedcomParser
         $open = [];
         $lastLevel = -1;
 
-        foreach (preg_split('/\r\n|\r|\n/', $text) ?: [] as $index => $raw) {
+        $lines = preg_split('/\r\n|\r|\n/', $text) ?: [];
+        unset($text);
+
+        if (count($lines) > self::MAX_LINES) {
+            throw new DomainException(__('The file has :count lines; at most :max can be read. Split it into branches in the program it came from.', [
+                'count' => number_format(count($lines)), 'max' => number_format(self::MAX_LINES),
+            ]));
+        }
+
+        foreach ($lines as $index => $raw) {
             $number = $index + 1;
             $line = ltrim($raw, " \t");
 
@@ -58,9 +80,16 @@ class GedcomParser
 
             // Continuation lines belong to the value of the line above.
             if (($tag === 'CONT' || $tag === 'CONC') && $level > 0 && isset($open[$level - 1])) {
-                $open[$level - 1]['value'] .= ($tag === 'CONT' ? "\n" : '').$value;
+                if (strlen($open[$level - 1]['value']) < self::MAX_VALUE_LENGTH) {
+                    $open[$level - 1]['value'] .= ($tag === 'CONT' ? "\n" : '').$value;
+                }
 
                 continue;
+            }
+
+            if (strlen($value) > self::MAX_VALUE_LENGTH) {
+                $value = mb_strcut($value, 0, self::MAX_VALUE_LENGTH);
+                self::warn($warnings, __('Line :n is extremely long and was shortened.', ['n' => $number]));
             }
 
             $node = ['tag' => $tag, 'xref' => $match[2] === '' ? null : $match[2], 'value' => $value, 'line' => $number, 'children' => []];

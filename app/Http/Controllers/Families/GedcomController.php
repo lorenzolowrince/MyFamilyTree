@@ -50,22 +50,40 @@ class GedcomController extends Controller
         ]);
     }
 
+    /** A file safe to pass on: living people and private records without their names or details. */
     public function export(Request $request, Family $family, GedcomWriter $writer, MemberPrivacy $privacy, HistoryRecorder $history): StreamedResponse
+    {
+        return $this->download($request, $family, $writer, $privacy, $history, complete: false);
+    }
+
+    /**
+     * Everything, for backup or for moving to another program. The route asks for the
+     * password again first: this one file holds every living relative's details.
+     */
+    public function exportComplete(Request $request, Family $family, GedcomWriter $writer, MemberPrivacy $privacy, HistoryRecorder $history): StreamedResponse
+    {
+        return $this->download($request, $family, $writer, $privacy, $history, complete: true);
+    }
+
+    private function download(Request $request, Family $family, GedcomWriter $writer, MemberPrivacy $privacy, HistoryRecorder $history, bool $complete): StreamedResponse
     {
         $this->authorize('exportGedcom', $family);
 
         /** @var User $user */
         $user = $request->user();
 
-        $gedcom = $writer->write($family, $privacy->viewer($user, $family));
+        $gedcom = $writer->write($family, $privacy->viewer($user, $family), $complete);
 
-        $history->audit('gedcom.exported', $family->id, 'family', $family->id, null, ['people' => substr_count($gedcom, ' INDI')], $user);
+        $history->audit('gedcom.exported', $family->id, 'family', $family->id, null, [
+            'people' => substr_count($gedcom, ' INDI'),
+            'kind' => $complete ? 'complete' : 'for sharing',
+        ], $user);
 
         return response()->streamDownload(
             function () use ($gedcom): void {
                 echo $gedcom;
             },
-            Str::slug($family->name).'-'.now()->format('Y-m-d').'.ged',
+            Str::slug($family->name).($complete ? '-complete-' : '-').now()->format('Y-m-d').'.ged',
             ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff'],
         );
     }

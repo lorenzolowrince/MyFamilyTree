@@ -11,6 +11,7 @@ import {
     show,
     store,
 } from '@/routes/families/gedcom';
+import { complete as exportComplete } from '@/routes/families/gedcom/export';
 import type { FamilyRef } from '@/types';
 
 export type GedcomImportStatus =
@@ -113,22 +114,58 @@ export default function GedcomIndex({
                             Export this tree
                         </h2>
                         <p className="text-sm text-muted-foreground">
-                            Downloads a GEDCOM 7 file with all{' '}
-                            {members.toLocaleString()}{' '}
+                            A GEDCOM 7 file of all {members.toLocaleString()}{' '}
                             {members === 1 ? 'person' : 'people'} and their
-                            relationships, including living people and records
-                            marked restricted or private. Photos, documents and
-                            the timeline are not part of the file. Keep it
-                            somewhere safe.
+                            relationships. Photos, documents and the timeline
+                            are not part of the file.
                         </p>
-                        <div>
-                            {/* A plain link: the browser saves the file. */}
-                            <Button asChild variant="outline">
-                                <a href={exportGedcom.url(family.slug)}>
-                                    <Download aria-hidden="true" />
-                                    Download GEDCOM file
-                                </a>
-                            </Button>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="grid content-start gap-2 rounded-lg border p-3">
+                                <h3 className="text-sm font-medium">
+                                    For sharing
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Living people, and records marked restricted
+                                    or private, keep their place in the tree but
+                                    appear as “Living” or “Private” with no
+                                    names, dates or other details. Use this to
+                                    send the tree to a relative or to a
+                                    genealogy website.
+                                </p>
+                                <div>
+                                    {/* A plain link: the browser saves the file. */}
+                                    <Button asChild variant="outline">
+                                        <a href={exportGedcom.url(family.slug)}>
+                                            <Download aria-hidden="true" />
+                                            Download for sharing
+                                        </a>
+                                    </Button>
+                                </div>
+                            </div>
+                            <div className="grid content-start gap-2 rounded-lg border p-3">
+                                <h3 className="text-sm font-medium">
+                                    Complete backup
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Everything, including living people and
+                                    private records. For your own backup or for
+                                    moving to another program. You are asked for
+                                    your password first. Keep the file somewhere
+                                    safe.
+                                </p>
+                                <div>
+                                    <Button asChild variant="outline">
+                                        <a
+                                            href={exportComplete.url(
+                                                family.slug,
+                                            )}
+                                        >
+                                            <Download aria-hidden="true" />
+                                            Download complete backup
+                                        </a>
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
                     </section>
                 )}

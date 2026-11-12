@@ -24,6 +24,13 @@ use App\Support\FuzzyDate\FuzzyDate;
  * Only people the exporting person may see are written. Tags starting with `_` are our own
  * additions, declared in the header; other programs ignore them.
  *
+ * Two kinds of file:
+ * - for sharing (the default): living people and records marked restricted or private keep
+ *   their place in the tree but lose everything else, name included. A file that leaves the
+ *   family (sent to a relative, uploaded to a genealogy site) then carries no living
+ *   person's details;
+ * - complete: everything, for backup or for moving to another program.
+ *
  * @phpstan-type FamilyRecord array{xref: string, husband: string|null, wife: string|null, partnership: FamilyRelationship|null, children: list<array{id: string, father: FamilyRelationship|null, mother: FamilyRelationship|null}>}
  */
 class GedcomWriter
@@ -40,9 +47,13 @@ class GedcomWriter
     /** @var array<string, string> place id => name */
     private array $places = [];
 
-    public function write(Family $family, MemberViewer $viewer): string
+    /** @var array<string, string> member id => the word written instead of their name */
+    private array $withheld = [];
+
+    public function write(Family $family, MemberViewer $viewer, bool $complete = false): string
     {
         $this->lines = [];
+        $this->withheld = [];
         $this->places = Place::query()->where('family_id', $family->id)->pluck('name', 'id')->all();
 
         $members = FamilyMember::query()
@@ -71,6 +82,16 @@ class GedcomWriter
             ->get()
             ->filter(fn (FamilyRelationship $link): bool => isset($xrefs[$link->person_a_id], $xrefs[$link->person_b_id]));
 
+        if (! $complete) {
+            foreach ($members as $member) {
+                if ($member->visibility->value !== 'family') {
+                    $this->withheld[$member->id] = 'Private';
+                } elseif ($member->isPresumedLiving()) {
+                    $this->withheld[$member->id] = 'Living';
+                }
+            }
+        }
+
         $genders = $members->mapWithKeys(fn (FamilyMember $member): array => [$member->id => $member->gender?->value])->all();
         $families = $this->families($relationships->all(), $xrefs, $genders);
 
@@ -80,6 +101,10 @@ class GedcomWriter
         $this->line(1, 'SOUR', 'MYFAMILYTREE');
         $this->line(2, 'NAME', (string) config('app.name'));
         $this->line(1, 'DATE', strtoupper(now()->format('j M Y')));
+
+        if (! $complete) {
+            $this->line(1, 'NOTE', 'Living people and private records are included without their names or details.');
+        }
         $this->line(1, 'SCHMA');
 
         foreach (self::EXTENSIONS as $tag) {
@@ -212,6 +237,15 @@ class GedcomWriter
     {
         $this->line(0, 'INDI', '', $xref);
 
+        if (isset($this->withheld[$member->id])) {
+            // Their place in the tree, and nothing else.
+            $this->line(1, 'NAME', $this->withheld[$member->id]);
+            $this->line(1, 'RESN', 'PRIVACY');
+            $this->familyLinks($member, $families);
+
+            return;
+        }
+
         $this->line(1, 'NAME', self::nameValue($member->full_name, $member->surname));
         $this->optional(2, 'GIVN', $member->given_names);
         $this->optional(2, 'SURN', $member->surname);
@@ -272,11 +306,23 @@ class GedcomWriter
             $this->line(1, '_PLACEHOLDER', 'Y');
         }
 
+        $this->familyLinks($member, $families);
+    }
+
+    /**
+     * @param  list<FamilyRecord>  $families
+     */
+    private function familyLinks(FamilyMember $member, array $families): void
+    {
         foreach ($families as $record) {
             foreach ($record['children'] as $child) {
                 if ($child['id'] === $member->id) {
                     $this->line(1, 'FAMC', $record['xref']);
-                    $this->line(2, 'PEDI', self::pedigree(array_filter([$child['father']?->subtype, $child['mother']?->subtype])));
+
+                    // Whether someone was adopted is theirs to tell.
+                    if (! $this->involvesWithheld([$member->id, $record['husband'], $record['wife']])) {
+                        $this->line(2, 'PEDI', self::pedigree(array_filter([$child['father']?->subtype, $child['mother']?->subtype])));
+                    }
                 }
             }
         }
@@ -286,6 +332,20 @@ class GedcomWriter
                 $this->line(1, 'FAMS', $record['xref']);
             }
         }
+    }
+
+    /**
+     * @param  array<int, string|null>  $ids
+     */
+    private function involvesWithheld(array $ids): bool
+    {
+        foreach ($ids as $id) {
+            if ($id !== null && isset($this->withheld[$id])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -308,19 +368,34 @@ class GedcomWriter
             $this->line(1, 'CHIL', $xrefs[$child['id']]);
 
             foreach (['F' => $child['father'], 'M' => $child['mother']] as $side => $link) {
-                if ($link !== null) {
-                    $this->line(2, "_{$side}REL", $link->subtype);
+                $parent = $side === 'F' ? $record['husband'] : $record['wife'];
 
-                    if ($link->certainty->value !== 'confirmed') {
-                        $this->line(2, "_{$side}CERT", $link->certainty->value);
-                    }
+                if ($link === null) {
+                    continue;
                 }
+
+                // Whether a living or private person was born, adopted or raised by this parent
+                // is theirs to tell: written as "not stated", which is also not a false claim
+                // of birth when the file is read back.
+                if ($this->involvesWithheld([$child['id'], $parent])) {
+                    $this->line(2, "_{$side}REL", 'unknown');
+
+                    continue;
+                }
+
+                $this->line(2, "_{$side}REL", $link->subtype);
+
+                if ($link->certainty->value !== 'confirmed') {
+                    $this->line(2, "_{$side}CERT", $link->certainty->value);
+                }
+
             }
         }
 
         $partnership = $record['partnership'];
 
-        if ($partnership === null) {
+        // A marriage, its date and how it ended are details of both partners.
+        if ($partnership === null || $this->involvesWithheld([$record['husband'], $record['wife']])) {
             return;
         }
 

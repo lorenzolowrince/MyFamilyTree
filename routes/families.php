@@ -21,6 +21,7 @@ use App\Http\Controllers\Families\TimelineController;
 use App\Http\Controllers\Families\TreeController;
 use App\Http\Middleware\EnsureTwoFactorEnabled;
 use App\Http\Middleware\RememberCurrentFamily;
+use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -122,6 +123,7 @@ Route::middleware(['auth', 'verified', EnsureTwoFactorEnabled::class])->group(fu
             // GEDCOM: export the tree, import a file (checked and previewed before anything changes).
             Route::get('gedcom', [GedcomController::class, 'index'])->name('gedcom.index');
             Route::get('gedcom/export', [GedcomController::class, 'export'])->middleware('throttle:10,60')->name('gedcom.export');
+            Route::get('gedcom/export/complete', [GedcomController::class, 'exportComplete'])->middleware(['throttle:10,60', RequirePassword::class])->name('gedcom.export.complete');
             Route::post('gedcom/imports', [GedcomController::class, 'store'])->middleware('throttle:10,60')->name('gedcom.store');
             Route::get('gedcom/imports/{import}', [GedcomController::class, 'show'])->whereUuid('import')->name('gedcom.show');
             Route::post('gedcom/imports/{import}/confirm', [GedcomController::class, 'confirm'])->whereUuid('import')->name('gedcom.confirm');

@@ -107,7 +107,7 @@ test('a report is made in the background as a PDF, and only its requester can do
 
     expect($report->status)->toBe('ready')
         ->and($report->title)->toBe('Descendants of Gimbang Lidau')
-        ->and($report->parameters)->toBe(['member_id' => $people['gimbang']->id, 'generations' => 3])
+        ->and($report->parameters)->toEqual(['member_id' => $people['gimbang']->id, 'generations' => 3, 'made_as' => 'owner'])
         ->and($report->storage_key)->toBe("families/{$family->id}/reports/{$report->id}.pdf")
         ->and($report->expires_at->isAfter(now()->addDays(6)))->toBeTrue()
         ->and(Storage::disk('local')->exists((string) $report->storage_key))->toBeTrue();
@@ -227,6 +227,40 @@ test('who may make reports, and outsiders find nothing', function () {
     $this->get(route('families.reports.download', [$other, $report]))->assertNotFound();
 
     expect(ReportExport::query()->count())->toBe(3);
+});
+
+test('after a change of role, a report made in the old role is no longer handed out', function () {
+    fakePdfService();
+    [$family] = treeFamily();
+    reportTree($family);
+    $admin = memberWithRole($family, FamilyRole::Admin);
+
+    $this->actingAs($admin)->post(route('families.reports.store', $family), ['type' => 'directory'])->assertSessionHasNoErrors();
+    $report = ReportExport::query()->sole();
+
+    expect($report->parameters['made_as'])->toBe('admin');
+    $this->get(route('families.reports.download', [$family, $report]))->assertOk();
+
+    // Demoted: the report still holds what an administrator sees (private records).
+    $admin->memberships()->sole()->forceFill(['role_id' => FamilyRole::Contributor->id()])->save();
+    app()->forgetScopedInstances();
+    $this->app['auth']->forgetGuards();
+
+    $this->actingAs($admin->fresh())->get(route('families.reports.download', [$family, $report]))->assertNotFound();
+    $this->get(route('families.reports.index', $family))->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('reports.0.status', 'expired')
+        ->where('reports.0.download_url', null));
+
+    // A new one shows what a contributor may see, and can be downloaded.
+    $this->post(route('families.reports.store', $family), ['type' => 'directory'])->assertSessionHasNoErrors();
+    $fresh = ReportExport::query()->latest('id')->firstOrFail();
+
+    expect($fresh->parameters['made_as'])->toBe('contributor');
+    $this->get(route('families.reports.download', [$family, $fresh]))->assertOk();
+
+    // The marker cannot be set from the form.
+    $this->post(route('families.reports.store', $family), ['type' => 'directory', 'made_as' => 'owner', 'parameters' => ['made_as' => 'owner']]);
+    expect(ReportExport::query()->latest('id')->firstOrFail()->parameters['made_as'])->toBe('contributor');
 });
 
 // --- Privacy ---------------------------------------------------------------------------

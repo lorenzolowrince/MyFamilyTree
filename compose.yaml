@@ -21,6 +21,7 @@ services:
             - '.:/var/www/html'
         networks:
             - sail
+            - pdf
         depends_on:
             - pgsql
             - redis
@@ -38,6 +39,7 @@ services:
             - '.:/var/www/html'
         networks:
             - sail
+            - pdf
         depends_on:
             - laravel.test
         restart: unless-stopped
@@ -52,6 +54,7 @@ services:
             - '.:/var/www/html'
         networks:
             - sail
+            - pdf
         depends_on:
             - laravel.test
         restart: unless-stopped
@@ -164,12 +167,23 @@ services:
             - '--chromium-allow-list=file:///tmp/.*'
             - '--libreoffice-disable-routes=true'
             - '--api-timeout=120s'
+        # Its own network with no route to the internet or to the database, cache, mail or
+        # storage containers: only the application and its workers can talk to it.
         networks:
-            - sail
+            - pdf
+        security_opt:
+            - 'no-new-privileges:true'
+        cap_drop:
+            - ALL
+        mem_limit: 1g
+        pids_limit: 512
         restart: unless-stopped
 networks:
     sail:
         driver: bridge
+    pdf:
+        driver: bridge
+        internal: true
 volumes:
     sail-clamav:
         driver: local

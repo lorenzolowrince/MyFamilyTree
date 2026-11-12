@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Families;
 
+use App\Enums\FamilyRole;
 use App\Http\Controllers\Controller;
 use App\Jobs\GenerateReport;
 use App\Models\Family;
@@ -9,6 +10,7 @@ use App\Models\FamilyMember;
 use App\Models\ReportExport;
 use App\Models\User;
 use App\Services\Audit\HistoryRecorder;
+use App\Services\Authorization\FamilyAccess;
 use App\Services\Media\MediaLibrary;
 use App\Services\Privacy\MemberPresenter;
 use App\Services\Privacy\MemberPrivacy;
@@ -48,12 +50,12 @@ class ReportController extends Controller
                 'id' => $report->id,
                 'type' => $report->type,
                 'title' => $report->title,
-                'status' => $report->status === 'ready' && ! $report->isReady() ? 'expired' : $report->status,
+                'status' => $report->status === 'ready' && ! $this->usable($report, $viewer->role) ? 'expired' : $report->status,
                 'error' => $report->error,
                 'size_bytes' => $report->size_bytes,
                 'created_at' => $report->created_at?->toIso8601String(),
                 'expires_at' => $report->expires_at->toIso8601String(),
-                'download_url' => $report->isReady() ? route('families.reports.download', [$family, $report]) : null,
+                'download_url' => $this->usable($report, $viewer->role) ? route('families.reports.download', [$family, $report]) : null,
             ]),
             'types' => collect(ReportBuilder::TYPES)->map(fn (string $label, string $type): array => [
                 'value' => $type,
@@ -128,7 +130,7 @@ class ReportController extends Controller
         return to_route('families.reports.index', $family);
     }
 
-    public function download(Request $request, Family $family, ReportExport $report, MediaLibrary $library, HistoryRecorder $history): StreamedResponse
+    public function download(Request $request, Family $family, ReportExport $report, MediaLibrary $library, HistoryRecorder $history, FamilyAccess $access): StreamedResponse
     {
         $this->authorize('generateReports', $family);
 
@@ -136,7 +138,12 @@ class ReportController extends Controller
         $user = $request->user();
 
         // Another person's report does not exist, as far as anyone else can tell.
-        abort_unless($report->requested_by === $user->id && $report->isReady() && $library->disk()->exists((string) $report->storage_key), 404);
+        abort_unless(
+            $report->requested_by === $user->id
+                && $this->usable($report, $access->role($user, $family))
+                && $library->disk()->exists((string) $report->storage_key),
+            404,
+        );
 
         $history->audit('report.downloaded', $family->id, 'report', $report->id, null, ['title' => $report->title], $user);
 
@@ -148,6 +155,16 @@ class ReportController extends Controller
             'X-Content-Type-Options' => 'nosniff',
             'Content-Security-Policy' => "default-src 'none'; sandbox",
         ]);
+    }
+
+    /**
+     * A report holds what its requester could see in the role they had when it was printed.
+     * After a change of role it is no longer handed out: they make a new one, which shows
+     * what they may see now.
+     */
+    private function usable(ReportExport $report, ?FamilyRole $role): bool
+    {
+        return $report->isReady() && $role !== null && ($report->parameters['made_as'] ?? null) === $role->value;
     }
 
     public function destroy(Request $request, Family $family, ReportExport $report, MediaLibrary $library): RedirectResponse

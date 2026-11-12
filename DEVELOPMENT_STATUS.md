@@ -21,7 +21,7 @@ Last updated: 2026-11-12. Rules for working on the project are in [CLAUDE.md](CL
 
 The branches are stacked: each one starts from the previous phase. No pull requests have been opened yet.
 
-**Last full test run:** 373 passed, 1 skipped (HEIC), at the end of Phase 8.
+**Last full test run:** 376 passed, 1 skipped (HEIC), after the Phase 8 privacy review.
 
 ## Completed modules
 
@@ -61,12 +61,9 @@ The branches are stacked: each one starts from the previous phase. No pull reque
 
 ## In progress
 
-Nothing. Phase 8 is finished.
+Nothing. Phase 8 and its privacy and security review are finished (see the review table at the end of [ADR 0007](docs/adr/0007-phase-8-reports-gedcom-finder.md)).
 
-**Next:**
-
-1. A privacy and security review of Phase 8 with **Fable 5.2**. GEDCOM files, reports and the relationship finder are new ways for family data to leave the app.
-2. Phase 9 (PWA) with **Opus 5.5**.
+**Next:** Phase 9 (PWA) with **Opus 5.5**. Ask **Fable 5.2** to design two parts before they are built: the offline snapshot (what is stored on a phone, how it is encrypted and wiped) and the outbox that syncs offline edits (conflicts, replay, permissions that changed while offline).
 
 ## Pending (by phase)
 
@@ -116,5 +113,6 @@ Nothing. Phase 8 is finished.
 
 ## Latest activity
 
+- 2026-11-12: Privacy and security review of Phase 8 (Fable 5.2), on branch `fix/phase-8-privacy-review`: GEDCOM export for sharing is now the default and the complete backup needs the password again; GEDCOM parsing is bounded (300,000 lines, every value has a maximum length); a report is only handed out in the role it was made in; the Chromium container is on its own internal network with no internet, database or storage access.
 - 2026-11-12: Phase 8 finished (PDF reports with Chromium/Gotenberg; ADR 0007) and pushed. `CLAUDE.md` is now tracked in Git.
 - 2026-11-12: Phases 4–7 pushed. Phase 8 parts 1 (finder and search) and 2 (GEDCOM) committed; part 3 (PDF reports) in progress. `CLAUDE.md` and this file created.

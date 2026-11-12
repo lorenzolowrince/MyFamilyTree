@@ -12,6 +12,8 @@ use App\Support\FuzzyDate\FuzzyDate;
  */
 final class GedcomDate
 {
+    private const MAX_TEXT = 200;
+
     private const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
     private const PREFIXES = [
@@ -58,8 +60,9 @@ final class GedcomDate
     public static function read(?string $value, ?string $phrase = null): array
     {
         $empty = ['year' => null, 'month' => null, 'day' => null, 'qualifier' => 'exact', 'year_to' => null, 'decade' => false, 'text' => null];
-        $phrase = $phrase === null || trim($phrase) === '' ? null : trim($phrase);
-        $raw = trim((string) $value);
+        // The same limit the date form applies to its free-text field.
+        $phrase = $phrase === null || trim($phrase) === '' ? null : mb_substr(trim($phrase), 0, self::MAX_TEXT);
+        $raw = mb_substr(trim((string) $value), 0, self::MAX_TEXT);
 
         // Calendar markers; only the Gregorian reading is kept.
         $text = strtoupper(trim((string) preg_replace('/@#D[A-Z ]+@|\b(GREGORIAN|JULIAN)\b/i', '', $raw)));
