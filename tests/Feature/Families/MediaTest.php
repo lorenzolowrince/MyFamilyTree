@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Support\SessionKey;
 use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
@@ -658,4 +659,55 @@ test('photos and documents are attached to timeline entries within what each per
     // Deleting a file takes its attachment with it once erased; meanwhile it is simply not listed.
     $this->delete(route('families.documents.destroy', [$family, $document]));
     expect($attachments($owner))->toHaveCount(1);
+});
+
+test('the uploader on the page sends one file at a time and gets a plain answer', function () {
+    [$family, $owner] = treeFamily();
+    [, $outsider] = treeFamily();
+    $viewer = memberWithRole($family, FamilyRole::Viewer);
+    $json = ['Accept' => 'application/json', 'X-Requested-With' => 'XMLHttpRequest'];
+
+    $this->actingAs($owner)->post(route('families.photos.store', $family), ['files' => [jpeg(700, 500)], 'visibility' => 'family'], $json)
+        ->assertOk()
+        ->assertExactJson(['stored' => 1, 'problems' => []]);
+
+    // Refused by content: the reason comes back, with 422 when nothing was stored.
+    $this->post(route('families.photos.store', $family), ['files' => [UploadedFile::fake()->createWithContent('x.jpg', '<?php echo 1;')]], $json)
+        ->assertStatus(422)
+        ->assertJsonPath('stored', 0)
+        ->assertJsonCount(1, 'problems');
+
+    $this->post(route('families.documents.store', $family), ['files' => [sampleFile('two-pages.pdf')], 'category' => 'other', 'visibility' => 'family'], $json)
+        ->assertOk()
+        ->assertJsonPath('stored', 1);
+
+    // Invalid input and permissions answer as before, in JSON.
+    $this->post(route('families.photos.store', $family), ['files' => []], $json)->assertStatus(422)->assertJsonValidationErrors('files');
+    $this->actingAs($viewer)->post(route('families.photos.store', $family), ['files' => [jpeg(300, 300)]], $json)->assertForbidden();
+    $this->actingAs($outsider)->post(route('families.photos.store', $family), ['files' => [jpeg(310, 300)]], $json)->assertNotFound();
+
+    // No flash message is left behind for the next page: the page shows its own summary.
+    expect(session(SessionKey::FLASH_DATA))->toBeNull()
+        ->and(FamilyPhoto::query()->count())->toBe(1)
+        ->and(FamilyDocument::query()->count())->toBe(1);
+});
+
+test('a photo made smaller on the device keeps the date it was taken', function () {
+    [$family, $owner] = treeFamily();
+
+    // What the browser sends after shrinking: a JPEG whose only EXIF is DateTimeOriginal
+    // (written by resources/js/lib/image-shrink.ts, withTakenDate).
+    $image = UploadedFile::fake()->image('shrunk.jpg', 400, 300);
+    $bytes = (string) file_get_contents($image->getRealPath());
+    $tiff = 'MM'.pack('n', 42).pack('N', 8)
+        .pack('n', 1).pack('n', 0x8769).pack('n', 4).pack('N', 1).pack('N', 26).pack('N', 0)
+        .pack('n', 1).pack('n', 0x9003).pack('n', 2).pack('N', 20).pack('N', 44).pack('N', 0)
+        ."2019:08:31 09:15:00\0";
+    $segment = "\xFF\xE1".pack('n', 2 + 6 + strlen($tiff))."Exif\0\0".$tiff;
+    file_put_contents($image->getRealPath(), substr($bytes, 0, 2).$segment.substr($bytes, 2));
+
+    $photo = uploadPhoto($this, $family, $owner, $image);
+
+    expect($photo->refresh()->status->value)->toBe('ready')
+        ->and($photo->taken->label())->toBe('31 Aug 2019');
 });

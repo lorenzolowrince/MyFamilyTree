@@ -86,6 +86,31 @@ Built by Opus 5.5 on `feature/pwa-push`. Email stays the main channel; push is a
 - The scheduler must run (`notifications:morning` hourly at :05). Restart Horizon after changing notification code.
 - Local note: every request takes about 6 seconds on this PC because the code is on a Windows folder shared into Docker. This is not caused by the app and will not happen on the server.
 
+## Part 3: camera upload (2026-11-13)
+
+Built by Opus 5.5 on `feature/pwa-camera-upload`. Applies to both photo and document uploads.
+
+| Area               | Delivered                                                                                                                                                                                                                                       |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Take a photo       | On phones and tablets, "Take a photo" opens the camera (`capture="environment"`). Camera photos get a readable name ("Photo 2026-11-13 09:30.jpg"). Files can be added in several goes and removed from the list before sending.                |
+| Smaller on device  | Photos whose longest edge is over 4096 px (the size the server keeps) are shrunk in the browser before sending: a 13.5 MB, 6000 px test photo went as 4 MB. Smaller photos, HEIC, PDF and TIFF are sent unchanged.                              |
+| Location           | A shrunk photo is drawn again, so its GPS position and other hidden data **never leave the phone**. Only the date taken is written back (a minimal EXIF block), because the gallery uses it. The server still removes metadata from every file. |
+| Dropped connection | Files are sent one at a time. A file interrupted by a lost connection is sent again when the device is back online (up to 5 tries); the dialog says what it is waiting for. Files not sent stay listed for another try.                         |
+| Server             | The photo and document upload routes answer JSON (`stored`, `problems`) when asked, so the page can show one summary. The checks are unchanged. Rate limit raised from 60 to 200 requests per 10 minutes, as each file is now its own request.  |
+
+### Verified
+
+- Tests: JSON answers (stored, refused by content with 422, validation, Viewer 403, outsider 404, no flash left behind) and a JPEG carrying only the browser-written date: the server reads the date taken from it.
+- Headless Edge: the 6000 px photo with GPS and a rotation tag uploaded as a 4 MB, upright 3072×4096 JPEG; the server processed it to ready with its date taken (15 Jul 1998). With the network cut during upload, the dialog waited, resumed when the network returned, and the photo was stored once. The camera button appears at phone width (dark mode checked) and not on a desktop.
+- **Not verified:** the camera on a real phone, and very large (200-megapixel) photos, which a phone may not have the memory to shrink; then the photo is sent unchanged and handled by the server.
+
+### Differences from the plan
+
+| Planned                                             | Implemented                                                        | Reason                                                                                                                                                                                                           |
+| --------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Sent in chunks so a dropped connection can resume" | Each **file** is its own request and is retried after reconnecting | Files are at most 25 MB (photos) and 50 MB (documents), and large photos are shrunk first. Chunked upload needs a new server protocol and storage for partial files; it can be added if real use shows failures. |
+| Resize large uploads on the device                  | Only above 4096 px, the size the server keeps                      | Below that, shrinking would lose quality the server would have kept.                                                                                                                                             |
+
 ## Proposed design: offline copy and sync (2026-11-13, awaiting the developer's approval)
 
 Designed by Fable 5.2 for implementation by Opus 5.5. Nothing in this section is built yet. It replaces "Security of local data" and "Offline editing and synchronisation" in [07-pwa.md](../architecture/07-pwa.md) where the two differ.

@@ -79,7 +79,7 @@ Route::middleware(['auth', 'verified', EnsureTwoFactorEnabled::class])->group(fu
 
             // Photos and albums. Uploads are limited per person; files are checked before they appear.
             Route::get('photos', [PhotoController::class, 'index'])->name('photos.index');
-            Route::post('photos', [PhotoController::class, 'store'])->middleware('throttle:60,10')->name('photos.store');
+            Route::post('photos', [PhotoController::class, 'store'])->middleware('throttle:200,10')->name('photos.store');
             Route::get('photos/{photo}', [PhotoController::class, 'show'])->whereUuid('photo')->name('photos.show');
             Route::patch('photos/{photo}', [PhotoController::class, 'update'])->whereUuid('photo')->name('photos.update');
             Route::delete('photos/{photo}', [PhotoController::class, 'destroy'])->whereUuid('photo')->name('photos.destroy');
@@ -93,7 +93,7 @@ Route::middleware(['auth', 'verified', EnsureTwoFactorEnabled::class])->group(fu
 
             // Documents: read as page images; the file itself only ever as a download.
             Route::get('documents', [DocumentController::class, 'index'])->name('documents.index');
-            Route::post('documents', [DocumentController::class, 'store'])->middleware('throttle:60,10')->name('documents.store');
+            Route::post('documents', [DocumentController::class, 'store'])->middleware('throttle:200,10')->name('documents.store');
             Route::get('documents/{document}', [DocumentController::class, 'show'])->whereUuid('document')->name('documents.show');
             Route::patch('documents/{document}', [DocumentController::class, 'update'])->whereUuid('document')->name('documents.update');
             Route::delete('documents/{document}', [DocumentController::class, 'destroy'])->whereUuid('document')->name('documents.destroy');

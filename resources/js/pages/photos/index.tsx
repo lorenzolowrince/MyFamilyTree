@@ -461,6 +461,7 @@ export default function PhotosIndex({
                         album_id: uploadAlbum === '' ? null : uploadAlbum,
                         visibility: uploadVisibility,
                     }}
+                    noun={['photo', 'photos']}
                     onClose={() => setUploading(false)}
                 >
                     <div className="grid gap-4 sm:grid-cols-2">

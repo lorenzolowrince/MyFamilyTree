@@ -6,22 +6,22 @@ Last updated: 2026-11-13. Rules for working on the project are in [CLAUDE.md](CL
 
 **Stage:** Phases 1–8 done; Phase 9 (PWA) in progress (part 1 done). Everything is built locally in Docker. The staging VPS has not been bought yet, so nothing is deployed. The developer has asked for phases 8–10 to be built back to back, then tested together.
 
-| Phase                                  | State                       | Branch                                  | Pushed |
-| -------------------------------------- | --------------------------- | --------------------------------------- | ------ |
-| 1 Architecture                         | Done                        | `main` (docs)                           | Yes    |
-| 2 Foundation                           | Done                        | `feature/phase-2-foundation`            | Yes    |
-| 3 Auth & users                         | Done                        | `feature/phase-3-auth-users`            | Yes    |
-| 4 Family tree core                     | Done                        | `feature/phase-4-family-tree`           | Yes    |
-| 5 Profiles & history                   | Done                        | `feature/phase-5-profiles-history`      | Yes    |
-| 6 Collaboration                        | Done                        | `feature/phase-6-collaboration`         | Yes    |
-| 7 Media & documents                    | Done                        | `feature/phase-7-media`                 | Yes    |
-| 8 Reports, GEDCOM, relationship finder | Done                        | `feature/phase-8-reports-gedcom`        | Yes    |
-| 9 PWA                                  | In progress (parts 1–2)     | `feature/pwa-shell`, `feature/pwa-push` | Yes    |
-| 10 Hardening & launch                  | Not started (needs the VPS) |                                         |        |
+| Phase                                  | State                       | Branch                                                               | Pushed |
+| -------------------------------------- | --------------------------- | -------------------------------------------------------------------- | ------ |
+| 1 Architecture                         | Done                        | `main` (docs)                                                        | Yes    |
+| 2 Foundation                           | Done                        | `feature/phase-2-foundation`                                         | Yes    |
+| 3 Auth & users                         | Done                        | `feature/phase-3-auth-users`                                         | Yes    |
+| 4 Family tree core                     | Done                        | `feature/phase-4-family-tree`                                        | Yes    |
+| 5 Profiles & history                   | Done                        | `feature/phase-5-profiles-history`                                   | Yes    |
+| 6 Collaboration                        | Done                        | `feature/phase-6-collaboration`                                      | Yes    |
+| 7 Media & documents                    | Done                        | `feature/phase-7-media`                                              | Yes    |
+| 8 Reports, GEDCOM, relationship finder | Done                        | `feature/phase-8-reports-gedcom`                                     | Yes    |
+| 9 PWA                                  | In progress (parts 1–3)     | `feature/pwa-shell`, `feature/pwa-push`, `feature/pwa-camera-upload` | Yes    |
+| 10 Hardening & launch                  | Not started (needs the VPS) |                                                                      |        |
 
 The branches are stacked: each one starts from the previous phase. No pull requests have been opened yet.
 
-**Last full test run:** 403 passed, 1 skipped (HEIC), after Phase 9 part 2 (push).
+**Last full test run:** 405 passed, 1 skipped (HEIC), after Phase 9 part 3 (camera upload).
 
 ## Completed modules
 
@@ -67,7 +67,9 @@ The branches are stacked: each one starts from the previous phase. No pull reque
 
 Part 2 (push notifications) is done on `feature/pwa-push`; delivery to a real phone is still to be tried.
 
-**Next:** **Opus 5.5** builds camera upload and mobile tree polish (no decision needed), then the offline copy and sync from the approved design. Bring the finished offline code back to **Fable 5.2** for review.
+Part 3 (camera upload, shrinking on the device, retry after a lost connection) is done on `feature/pwa-camera-upload`.
+
+**Next:** **Opus 5.5** builds mobile tree polish (no decision needed), then the offline copy and sync from the approved design. Bring the finished offline code back to **Fable 5.2** for review.
 
 ## Pending (by phase)
 
@@ -75,7 +77,6 @@ Part 2 (push notifications) is done on `feature/pwa-push`; delivery to a real ph
     - opt-in encrypted offline snapshot and offline viewer;
     - an outbox that syncs changes made offline, with conflict handling;
     - web push (birthdays, anniversaries, events, approvals); `family_events.notify_members` is acted on here;
-    - camera upload;
     - polish of the tree on phones.
 - **Phase 10 (needs the VPS):**
     - the rest of the super-admin dashboard;
@@ -115,6 +116,7 @@ Part 2 (push notifications) is done on `feature/pwa-push`; delivery to a real ph
 
 ## Latest activity
 
+- 2026-11-13: Phase 9 part 3 (Opus 5.5) on `feature/pwa-camera-upload`: "Take a photo" on phones, photos over 4096 px shrunk on the device (GPS never leaves the phone; date taken kept), files sent one at a time and retried after a lost connection.
 - 2026-11-13: Phase 9 part 2 (Opus 5.5) on `feature/pwa-push`: push notifications (approvals, announced events with email, morning birthday/anniversary/event reminders), Settings → Notifications, logout unsubscribes the device, push addresses limited to the browsers' push services. The push service accepted a real message; arrival on a phone not yet tried.
 - 2026-11-13: Offline copy and sync designed (Fable 5.2), in ADR 0008; awaiting approval of five decisions.
 - 2026-11-13: Privacy fix (Fable 5.2) on `fix/hidden-fields-in-edits`: when someone who cannot see a living person's details edited that person, the proposal showed them the hidden values, and approving it (or publishing directly) erased them. Hidden fields are now removed from such edits on the server (`MemberPrivacy::editableFields`), from the proposal view, and from the edit form.

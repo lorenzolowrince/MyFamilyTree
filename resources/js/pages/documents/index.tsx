@@ -260,6 +260,7 @@ export default function DocumentsIndex({
                     maxBytes={limits.max_bytes}
                     maxFiles={limits.max_files}
                     extra={{ category, visibility, downloadable }}
+                    noun={['document', 'documents']}
                     onClose={() => setUploading(false)}
                 >
                     <div className="grid gap-4 sm:grid-cols-2">

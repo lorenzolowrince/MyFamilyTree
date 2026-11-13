@@ -22,6 +22,7 @@ use App\Services\Privacy\MemberPrivacy;
 use App\Support\FormOptions;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -125,7 +126,7 @@ class PhotoController extends Controller
         ]);
     }
 
-    public function store(MediaDetailsRequest $request, Family $family, UploadMedia $upload, SaveMediaDetails $details): RedirectResponse
+    public function store(MediaDetailsRequest $request, Family $family, UploadMedia $upload, SaveMediaDetails $details): RedirectResponse|JsonResponse
     {
         $this->authorize('create', [FamilyPhoto::class, $family]);
 
@@ -157,6 +158,11 @@ class PhotoController extends Controller
             } catch (DomainException $exception) {
                 $problems[] = $exception->getMessage();
             }
+        }
+
+        // The uploader on the page sends one file at a time and shows its own summary.
+        if ($request->expectsJson()) {
+            return response()->json(['stored' => $stored, 'problems' => $problems], $stored === 0 && $problems !== [] ? 422 : 200);
         }
 
         if ($stored > 0) {
